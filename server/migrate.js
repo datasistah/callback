@@ -29,8 +29,13 @@ export async function migrate() {
     process.exit(1);
   }
 
-  const sqlPath = path.join(__dirname, 'migrations', '001_init.sql');
-  const sql = fs.readFileSync(sqlPath, 'utf8');
+  // Apply every migrations/*.sql in filename order. Each file is idempotent,
+  // so re-running the whole set is safe.
+  const migrationsDir = path.join(__dirname, 'migrations');
+  const files = fs
+    .readdirSync(migrationsDir)
+    .filter((f) => f.endsWith('.sql'))
+    .sort();
 
   const client = new Client({
     connectionString,
@@ -39,8 +44,12 @@ export async function migrate() {
 
   await client.connect();
   try {
-    await client.query(sql);
-    console.log('Migration applied: tables are ready.');
+    for (const file of files) {
+      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf8');
+      await client.query(sql);
+      console.log(`Migration applied: ${file}`);
+    }
+    console.log('All migrations applied: tables are ready.');
   } finally {
     await client.end();
   }

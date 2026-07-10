@@ -10,6 +10,7 @@
 import './lib/loadEnv.js';
 import { migrate } from './migrate.js';
 import { adminClient } from './supabase.js';
+import { embedItem } from './lib/vault.js';
 
 const DEMO_EMAIL = 'maya.rivera@example.com';
 const DEMO_PASSWORD = 'JobTailor2026!';
@@ -79,6 +80,37 @@ const SEED_JOBS = [
   },
 ];
 
+// Curated Career Vault — atomic, provenance-ready facts for Maya. Each maps to
+// one or more of the seed jobs so tailoring retrieves and cites real items.
+const SEED_CAREER_ITEMS = [
+  { kind: 'experience', title: 'Northstar Data — Senior ML Engineer',
+    content: 'Built a deep-learning recommendation system in PyTorch serving 4M daily users, lifting engagement 12%.',
+    source: 'Northstar Data (2021–present)' },
+  { kind: 'experience', title: 'Northstar Data — Senior ML Engineer',
+    content: 'Stood up an offline + online model evaluation harness and ran weekly A/B tests to gate every launch.',
+    source: 'Northstar Data (2021–present)' },
+  { kind: 'experience', title: 'Northstar Data — Senior ML Engineer',
+    content: 'Owned the data pipelines feeding the recommender, partnering with data engineering on freshness and quality.',
+    source: 'Northstar Data (2021–present)' },
+  { kind: 'experience', title: 'Brightwave Analytics — ML Engineer',
+    content: 'Built NLP classifiers for support-ticket routing with scikit-learn and spaCy, cutting manual triage 40%.',
+    source: 'Brightwave Analytics (2018–2021)' },
+  { kind: 'experience', title: 'Brightwave Analytics — ML Engineer',
+    content: 'Productionized models as REST services on AWS (ECS, Lambda) with monitoring and automated rollbacks.',
+    source: 'Brightwave Analytics (2018–2021)' },
+  { kind: 'project', title: 'Experimentation platform',
+    content: 'Designed A/B tests and statistical significance checks for product launches, building dashboards for stakeholders.',
+    source: 'Northstar Data' },
+  { kind: 'skill', title: 'Python & PyTorch',
+    content: 'Python and PyTorch for production machine learning, from training to serving.', source: 'SKILLS' },
+  { kind: 'skill', title: 'Recommendation systems',
+    content: 'Recommendation systems: candidate generation, ranking, and evaluation.', source: 'SKILLS' },
+  { kind: 'skill', title: 'Model evaluation & A/B testing',
+    content: 'Model evaluation, A/B testing, and experimentation methodology.', source: 'SKILLS' },
+  { kind: 'skill', title: 'AWS',
+    content: 'Deploying and operating models on AWS (ECS, Lambda, SageMaker).', source: 'SKILLS' },
+];
+
 async function findUserByEmail(admin, email) {
   // listUsers is paginated; the demo set is tiny, so one page is plenty.
   const { data, error } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
@@ -113,6 +145,7 @@ async function run() {
   //    Deleting jobs cascades to resumes / cover_letters / scores.
   await admin.from('jobs').delete().eq('user_id', userId);
   await admin.from('profiles').delete().eq('user_id', userId);
+  await admin.from('career_items').delete().eq('user_id', userId);
 
   // 3. Base profile (one per user).
   const { error: profileErr } = await admin.from('profiles').insert({
@@ -126,6 +159,17 @@ async function run() {
   const rows = SEED_JOBS.map((j) => ({ ...j, user_id: userId }));
   const { error: jobsErr } = await admin.from('jobs').insert(rows);
   if (jobsErr) throw jobsErr;
+
+  // 5. Career Vault — embed each item (pgvector column stores a bracketed
+  //    literal, hence JSON.stringify) so tailoring can retrieve + cite them.
+  const vaultRows = [];
+  for (const item of SEED_CAREER_ITEMS) {
+    const embedding = await embedItem(item);
+    vaultRows.push({ user_id: userId, ...item, embedding: JSON.stringify(embedding) });
+  }
+  const { error: vaultErr } = await admin.from('career_items').insert(vaultRows);
+  if (vaultErr) throw vaultErr;
+  console.log(`Seeded ${vaultRows.length} Career Vault items.`);
 
   console.log('Seed complete.');
   console.log('');

@@ -9,11 +9,10 @@ import { sendError, notFoundJob, serverError } from '../lib/respond.js';
 import { computeScore } from '../lib/score.js';
 import {
   aiEnabled,
-  tailorResume,
   generateCoverLetter,
-  tailorResumeFallback,
   generateCoverLetterFallback,
 } from '../lib/ai.js';
+import { buildTailoredResume } from '../lib/tailor.js';
 
 const router = express.Router();
 router.use(requireAuth);
@@ -112,7 +111,7 @@ router.get('/:id', async (req, res) => {
     if (!job) return notFoundJob(res);
 
     const [resumeRes, coverRes, scoreRes] = await Promise.all([
-      db.from('resumes').select('id, content, updated_at').eq('job_id', job.id).maybeSingle(),
+      db.from('resumes').select('id, content, provenance, updated_at').eq('job_id', job.id).maybeSingle(),
       db.from('cover_letters').select('id, content, updated_at').eq('job_id', job.id).maybeSingle(),
       db
         .from('scores')
@@ -264,25 +263,30 @@ router.post('/:id/resume/tailor', async (req, res) => {
     }
 
     let content;
-    if (aiEnabled()) {
-      try {
-        content = await tailorResume({ profile, job });
-      } catch (err) {
-        console.error('tailorResume:', err.message);
-        return sendError(res, 502, 'generation_failed', 'Tailoring failed — try again.');
-      }
-    } else {
-      // No AI key: deterministic mock so the loop works end-to-end.
-      content = tailorResumeFallback({ profile, job });
+    let provenance;
+    try {
+      // Retrieves Career Vault items, tailors bullets that cite their source,
+      // and runs the groundedness check. Falls back to legacy whole-resume
+      // tailoring (empty provenance) when the vault is empty.
+      ({ content, provenance } = await buildTailoredResume(db, { profile, job }));
+    } catch (err) {
+      console.error('buildTailoredResume:', err.message);
+      return sendError(res, 502, 'generation_failed', 'Tailoring failed — try again.');
     }
 
     const { data, error } = await db
       .from('resumes')
       .upsert(
-        { job_id: job.id, user_id: req.user.id, content, updated_at: new Date().toISOString() },
+        {
+          job_id: job.id,
+          user_id: req.user.id,
+          content,
+          provenance,
+          updated_at: new Date().toISOString(),
+        },
         { onConflict: 'job_id' }
       )
-      .select('id, job_id, content, updated_at')
+      .select('id, job_id, content, provenance, updated_at')
       .single();
 
     if (error) {
@@ -305,7 +309,7 @@ router.get('/:id/resume', async (req, res) => {
 
     const { data, error } = await db
       .from('resumes')
-      .select('id, job_id, content, updated_at')
+      .select('id, job_id, content, provenance, updated_at')
       .eq('job_id', job.id)
       .maybeSingle();
 
@@ -347,10 +351,12 @@ router.put('/:id/resume', async (req, res) => {
 
     const { data, error } = await db
       .from('resumes')
-      .update({ content, updated_at: new Date().toISOString() })
+      // A hand-edited resume no longer matches the generated provenance, so
+      // clear it rather than show citations that point at stale text.
+      .update({ content, provenance: [], updated_at: new Date().toISOString() })
       .eq('job_id', job.id)
       .eq('user_id', req.user.id)
-      .select('id, job_id, content, updated_at')
+      .select('id, job_id, content, provenance, updated_at')
       .single();
 
     if (error) {

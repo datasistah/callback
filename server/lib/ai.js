@@ -38,6 +38,76 @@ export async function tailorResume({ profile, job }) {
   return complete({ task: 'resume_tailor', system, prompt, maxTokens: 2048 });
 }
 
+// ---------------------------------------------------------------------------
+// Provenance-aware (RAG-grounded) tailoring.
+//
+// Instead of rewriting the whole résumé freehand, we retrieve the candidate's
+// most relevant Career Vault items and ask the model to produce bullets that
+// each CITE the item they draw from. The caller then runs a groundedness check
+// (lib/vault.verifyGrounding) so any bullet not supported by its cited item is
+// flagged. Returns an array of { text, source_id } (source_id is one of the
+// provided item ids, or null when the model couldn't ground the bullet).
+// ---------------------------------------------------------------------------
+
+export async function tailorResumeGrounded({ job, items }) {
+  const system =
+    'You are an expert resume writer that ONLY uses facts the candidate has ' +
+    'actually recorded. You are given the candidate\'s career items, each with ' +
+    'an id. Write tailored resume bullets for the target job. Every bullet MUST ' +
+    'be supported by exactly one career item and MUST cite that item\'s id in ' +
+    '"source_id". Never invent experience, numbers, or employers. If no item ' +
+    'supports a claim the job wants, omit it. Return ONLY a JSON object of the ' +
+    'form {"bullets":[{"text":"...","source_id":"<item id>"}]} with no prose.';
+
+  const itemList = items
+    .map((it) => `- id: ${it.id}\n  (${it.kind}) ${it.title}: ${it.content}`)
+    .join('\n');
+
+  const prompt = [
+    `JOB TITLE: ${job.title}`,
+    `COMPANY: ${job.company}`,
+    'JOB DESCRIPTION:',
+    job.description,
+    '',
+    'CANDIDATE CAREER ITEMS (cite these ids):',
+    itemList,
+    '',
+    'Return JSON only: {"bullets":[{"text":"...","source_id":"<id>"}]}',
+  ].join('\n');
+
+  const raw = await complete({ task: 'resume_tailor', system, prompt, maxTokens: 2048 });
+  return parseBullets(raw, items);
+}
+
+// Extract the {"bullets":[...]} array from a model response, tolerating code
+// fences / stray prose, and keep only bullets that cite a real provided item.
+function parseBullets(raw, items) {
+  const ids = new Set(items.map((i) => i.id));
+  let parsed;
+  try {
+    const match = String(raw).match(/\{[\s\S]*\}/);
+    parsed = JSON.parse(match ? match[0] : raw);
+  } catch {
+    parsed = null;
+  }
+  const bullets = Array.isArray(parsed?.bullets) ? parsed.bullets : [];
+  return bullets
+    .filter((b) => b && typeof b.text === 'string' && b.text.trim())
+    .map((b) => ({
+      text: b.text.trim(),
+      // Only trust a source_id that names a real retrieved item; otherwise null
+      // so the groundedness check flags it as unsupported.
+      source_id: ids.has(b.source_id) ? b.source_id : null,
+    }));
+}
+
+// No-LLM grounded fallback: one bullet per retrieved item, each citing itself.
+// Trivially grounded (bullet text == item text), so the provenance demo works
+// end-to-end with no model at all.
+export function tailorResumeGroundedFallback({ items }) {
+  return items.map((it) => ({ text: it.content.trim(), source_id: it.id }));
+}
+
 export async function generateCoverLetter({ profile, job }) {
   const system =
     'You are an expert cover-letter writer. Write a personalized cover letter ' +
