@@ -33,6 +33,31 @@ Agent Loop) — added on top, NOT a rewrite.
 - **External job search:** connect to open jobs on job boards. (NEW — new feature.)
 - **RAG/chunking:** reuse the course's Module 3 patterns as the reference implementation
   (see below), don't reinvent. (NEW)
+- **Product intent:** Callback is meant to become a real customer-facing product, not just
+  a course demo. Every architecture choice must be cheap-to-demo *now* AND productizable
+  *later* — no throwaway scaffolding. (NEW)
+- **Agentic architecture = Node-native + MCP (NOT Google ADK).** (NEW) Evolve the existing
+  provider router (`server/harness/llm/`) into a genuine agent loop — tool registry +
+  reason→act→observe + a lightweight orchestrator that sequences specialized "agents"
+  (tailor / question-gen / STAR-critique), faithful to Module 2's orchestrator+subagent
+  pattern. Adopt the one language-neutral piece of Module 5 — **MCP** (JS SDK) — to expose
+  the app's tools; internal now, an external-agent surface later. **Rejected ADK/A2A**: ADK
+  is Python + Gemini-first (a second runtime + paid model coupling + more Fly infra), and
+  A2A (agents as network microservices) solves cross-org coordination we don't have inside
+  one app. Keep one Node codebase, one deploy. Free/local models + the deterministic mock
+  must keep working through the agent loop.
+- **Voice = swappable provider seam (mirrors the LLM router).** (NEW) Voice is STT→LLM→TTS
+  and is a *separate* seam from the LLM (Ollama is text-only and does NOT do voice). Default
+  is the **browser Web Speech API** — $0, zero voice server cost on Fly, guarantees the demo
+  runs free. **Realtime speech-to-speech is opt-in premium** behind the same seam: candidate
+  providers are OpenAI `gpt-realtime-2.1-mini` and Google Gemini Live (`gemini-*-flash-live`);
+  exact model IDs are verified at build time, not pinned here. A realtime provider is a paid
+  API, so it must always be optional — the free Web Speech path preserves the "free/local
+  must always work" rule. Note: using Gemini Live does NOT require ADK — it's a WebSocket
+  speech-to-speech API consumable directly from Node, just like OpenAI Realtime.
+- **Product-hardening backlog (later, not blocking the demo):** input/output guardrails
+  (Module 4 / Llama Guard) before untrusted users can type in, per-user cost caps + rate
+  limiting, observability/tracing, and billing. Noted so no future session forgets them. (NEW)
 
 ## RAG reference material (course repo)
 
@@ -87,14 +112,30 @@ In `~/Documents/repos/multi-agent-course-sprint-zero`:
 
 ## Phases (planned)
 
-1. **Career Vault + provenance-aware, RAG-grounded tailoring** ← next milestone.
+1. **Career Vault + provenance-aware, RAG-grounded tailoring** — DONE (see Status).
    - `career_items` data model; pgvector semantic retrieval (reuse Module 3 chunking).
    - Tailoring cites source `career_item` IDs; unsupported bullets flagged (groundedness check).
-2. **JD-based interview question generation** (`questionGenerator` tool; `interview_sessions`/`questions` tables).
-3. **Interview Studio** — video capture + transcript (getUserMedia/MediaRecorder + browser STT).
-4. **STAR critique** + streamed feedback report.
-5. **External job-board search** — connect to open-jobs source(s); dark-mode UI polish;
+2. **Agentic harness (Node-native + MCP)** ← next milestone. Turn the provider router into a
+   real agent loop and orchestrator; keep free/local + mock working throughout.
+   - **Tool registry + agent loop:** define tools (vault search, score, question-gen, grounding
+     check) with typed schemas; a reason→act→observe loop drives tool-calling models, and a
+     deterministic single-pass path covers the no-model/weak-model case.
+   - **Orchestrator:** sequences the specialized agents (tailor → question-gen → STAR-critique)
+     following Module 2's pattern (shared spec, isolated tasks, failures isolated not cascading).
+   - **MCP tool layer:** wrap the tool registry behind an MCP server (JS SDK,
+     `@modelcontextprotocol/sdk`) so tools are consumable internally now and by external agents
+     later. `GET /api/llm/status` reports the agentic/MCP mode.
+3. **JD-based interview question generation** (`questionGenerator` agent/tool; `interview_sessions`/
+   `questions` tables). First consumer of the new agent loop.
+4. **Interview Studio + swappable voice** — video capture + transcript (getUserMedia/MediaRecorder).
+   - **Voice provider seam** mirroring the LLM router: `webspeech` (browser STT+TTS, $0 default)
+     and an opt-in `realtime` provider (OpenAI `gpt-realtime-2.1-mini` or Gemini Live —
+     WebSocket speech-to-speech from Node, no ADK). Selected via env; free path always works.
+5. **STAR critique** + streamed feedback report (agentic: retrieve rubric → critique → verify).
+6. **External job-board search** — connect to open-jobs source(s); dark-mode UI polish;
    manual→automated Company Dossier signals (web-search agent); interviewer TTS; tests.
+7. **Product hardening** — guardrails (Module 4 / Llama Guard) on untrusted input/output, per-user
+   cost caps + rate limiting, observability/tracing, billing. Gate before public/customer launch.
 
 ## Local LLM setup (free path)
 
