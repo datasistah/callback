@@ -51,7 +51,7 @@ export default function SignupPage() {
 
   return (
     <AuthShell
-      title="Create your JobTailor account"
+      title="Create your Callback account"
       subtitle="Tailor every application and score the fit before you apply."
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-4">

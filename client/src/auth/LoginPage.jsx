@@ -39,7 +39,7 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      title="Log in to JobTailor"
+      title="Log in to Callback"
       subtitle="Welcome back. Pick up where you left off."
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-4">

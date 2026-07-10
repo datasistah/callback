@@ -1,10 +1,11 @@
-// JobTailor backend — Express + Supabase.
+// Callback backend — Express + Supabase.
 // Base URL: http://localhost:3001/api  (frontend runs on http://localhost:5173).
 import './lib/loadEnv.js'; // ensures server/.env exists and is loaded first
 import express from 'express';
 import cors from 'cors';
 import profileRouter from './routes/profile.js';
 import jobsRouter from './routes/jobs.js';
+import { providerStatus } from './harness/llm/index.js';
 
 const app = express();
 const PORT = 3001;
@@ -15,6 +16,11 @@ app.use(express.json({ limit: '1mb' }));
 // Lightweight health check (unauthenticated) — handy for QA and uptime checks.
 app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok' });
+});
+
+// Which LLM provider(s) the harness will use — for debugging / setup checks.
+app.get('/api/llm/status', (req, res) => {
+  res.status(200).json(providerStatus());
 });
 
 app.use('/api/profile', profileRouter);
@@ -36,5 +42,5 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`JobTailor backend listening on http://localhost:${PORT}`);
+  console.log(`Callback backend listening on http://localhost:${PORT}`);
 });

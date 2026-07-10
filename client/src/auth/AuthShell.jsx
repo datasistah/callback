@@ -6,7 +6,7 @@ export default function AuthShell({ title, subtitle, children }) {
     <div className="flex min-h-screen flex-col bg-white">
       <header className="mx-auto flex w-full max-w-6xl items-center px-6 py-6">
         <Link to="/" className="text-lg font-semibold tracking-tight text-ink">
-          Job<span className="text-accent">Tailor</span>
+          Call<span className="text-accent">back</span>
         </Link>
       </header>
       <main className="flex flex-1 items-center justify-center px-6 py-12">

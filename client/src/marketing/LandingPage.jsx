@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 function Wordmark() {
   return (
     <span className="text-lg font-semibold tracking-tight text-ink">
-      Job<span className="text-accent">Tailor</span>
+      Call<span className="text-accent">back</span>
     </span>
   )
 }
@@ -54,7 +54,7 @@ export default function LandingPage() {
           Tailor every application. Score every fit before you apply.
         </h1>
         <p className="mx-auto mt-6 max-w-xl text-lg text-gray-600">
-          JobTailor turns one saved job into a tailored resume, a matching cover
+          Callback turns one saved job into a tailored resume, a matching cover
           letter, and a 0–100 match score that tells you what is still missing.
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
@@ -290,7 +290,7 @@ export default function LandingPage() {
             </div>
           </div>
           <p className="mt-12 border-t border-gray-100 pt-6 text-sm text-gray-400">
-            © {year} JobTailor. All rights reserved.
+            © {year} Callback. All rights reserved.
           </p>
         </div>
       </footer>

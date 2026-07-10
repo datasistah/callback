@@ -1,57 +1,31 @@
 // LLM helper for tailoring resumes and generating cover letters.
 //
-// Uses the Anthropic Messages API ONLY when ANTHROPIC_API_KEY is set.
-// The match score is a separate deterministic heuristic (lib/score.js) and
-// never touches this file — it must work with no AI key.
+// Routes through the Agent Harness LLM layer (harness/llm), which picks the
+// provider per task (OpenRouter / Ollama / Anthropic). The match score is a
+// separate deterministic heuristic (lib/score.js) and never touches this file
+// — it must work with no LLM configured at all.
 //
 // Contract:
-//  - aiEnabled()  → true only when ANTHROPIC_API_KEY is present.
+//  - aiEnabled()  → true when any LLM provider is configured.
 //  - tailorResume / generateCoverLetter throw a tagged error on failure:
-//      { code: 'ai_not_configured' }  → no key (caller returns 503)
+//      { code: 'llm_not_configured' } → no provider (caller returns 503)
 //      { code: 'generation_failed' }  → LLM call failed (caller returns 502)
-import Anthropic from '@anthropic-ai/sdk';
+import { complete, llmEnabled } from '../harness/llm/index.js';
 import { extractKeywords } from './score.js';
 
-// Per the api-contract: tailoring/cover-letter use claude-haiku-4-5-20251001.
-const MODEL = 'claude-haiku-4-5-20251001';
-
 export function aiEnabled() {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
-}
-
-function client() {
-  return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-}
-
-function notConfigured() {
-  const err = new Error('No AI key configured.');
-  err.code = 'ai_not_configured';
-  return err;
-}
-
-function generationFailed(cause) {
-  const err = new Error('Generation failed.');
-  err.code = 'generation_failed';
-  err.cause = cause;
-  return err;
-}
-
-// Pull the text out of a Messages API response.
-function firstText(message) {
-  const block = (message.content || []).find((b) => b.type === 'text');
-  return block ? block.text.trim() : '';
+  return llmEnabled();
 }
 
 export async function tailorResume({ profile, job }) {
-  if (!aiEnabled()) throw notConfigured();
+  const system =
+    'You are an expert resume writer. Rewrite the candidate\'s base resume so it ' +
+    'is tailored to the specific job. Keep every claim truthful to the base ' +
+    'resume — do not invent experience. Emphasize the skills and keywords the ' +
+    'job asks for where the candidate genuinely has them. Return only the ' +
+    'tailored resume text, no preamble.';
 
   const prompt = [
-    'You are an expert resume writer. Rewrite the candidate\'s base resume so it is',
-    'tailored to the specific job below. Keep every claim truthful to the base',
-    'resume — do not invent experience. Emphasize the skills and keywords the job',
-    'asks for where the candidate genuinely has them. Return only the tailored',
-    'resume text, no preamble.',
-    '',
     `JOB TITLE: ${job.title}`,
     `COMPANY: ${job.company}`,
     'JOB DESCRIPTION:',
@@ -61,30 +35,17 @@ export async function tailorResume({ profile, job }) {
     profile,
   ].join('\n');
 
-  try {
-    const message = await client().messages.create({
-      model: MODEL,
-      max_tokens: 2048,
-      messages: [{ role: 'user', content: prompt }],
-    });
-    const text = firstText(message);
-    if (!text) throw new Error('Empty response from model.');
-    return text;
-  } catch (err) {
-    if (err.code === 'ai_not_configured') throw err;
-    throw generationFailed(err);
-  }
+  return complete({ task: 'resume_tailor', system, prompt, maxTokens: 2048 });
 }
 
 export async function generateCoverLetter({ profile, job }) {
-  if (!aiEnabled()) throw notConfigured();
+  const system =
+    'You are an expert cover-letter writer. Write a personalized cover letter ' +
+    'for the candidate applying to the job. Name the company and reflect its ' +
+    'stack/requirements. Keep it truthful to the candidate\'s base resume. ' +
+    'Return only the cover letter text, no preamble.';
 
   const prompt = [
-    'You are an expert cover-letter writer. Write a personalized cover letter for',
-    'the candidate applying to the job below. Name the company and reflect its',
-    'stack/requirements. Keep it truthful to the candidate\'s base resume. Return',
-    'only the cover letter text, no preamble.',
-    '',
     `JOB TITLE: ${job.title}`,
     `COMPANY: ${job.company}`,
     'JOB DESCRIPTION:',
@@ -94,19 +55,7 @@ export async function generateCoverLetter({ profile, job }) {
     profile,
   ].join('\n');
 
-  try {
-    const message = await client().messages.create({
-      model: MODEL,
-      max_tokens: 2048,
-      messages: [{ role: 'user', content: prompt }],
-    });
-    const text = firstText(message);
-    if (!text) throw new Error('Empty response from model.');
-    return text;
-  } catch (err) {
-    if (err.code === 'ai_not_configured') throw err;
-    throw generationFailed(err);
-  }
+  return complete({ task: 'cover_letter', system, prompt, maxTokens: 2048 });
 }
 
 // ---------------------------------------------------------------------------

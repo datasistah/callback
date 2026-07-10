@@ -1,7 +1,7 @@
 {
-  "name": "jobtailor-server",
+  "name": "callback-server",
   "version": "1.0.0",
-  "description": "JobTailor backend — Express + Supabase API for the Sprint Zero core loop (save a job, tailor a resume + cover letter, get a match score).",
+  "description": "Callback backend — Express + Supabase API for the Sprint Zero core loop (save a job, tailor a resume + cover letter, get a match score).",
   "type": "module",
   "main": "index.js",
   "scripts": {
