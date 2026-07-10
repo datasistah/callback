@@ -1,0 +1,22 @@
+{
+  "name": "jobtailor-server",
+  "version": "1.0.0",
+  "description": "JobTailor backend — Express + Supabase API for the Sprint Zero core loop (save a job, tailor a resume + cover letter, get a match score).",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "migrate": "node migrate.js",
+    "seed": "node seed.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.65.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^3.1.0",
+    "pg": "^8.12.0"
+  }
+}

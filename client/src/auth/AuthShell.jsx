@@ -1,0 +1,23 @@
+import { Link } from 'react-router-dom'
+
+// Shared visual shell for the login and signup pages.
+export default function AuthShell({ title, subtitle, children }) {
+  return (
+    <div className="flex min-h-screen flex-col bg-white">
+      <header className="mx-auto flex w-full max-w-6xl items-center px-6 py-6">
+        <Link to="/" className="text-lg font-semibold tracking-tight text-ink">
+          Job<span className="text-accent">Tailor</span>
+        </Link>
+      </header>
+      <main className="flex flex-1 items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm">
+          <h1 className="text-2xl font-semibold tracking-tight text-ink">
+            {title}
+          </h1>
+          {subtitle && <p className="mt-2 text-sm text-gray-500">{subtitle}</p>}
+          <div className="mt-8">{children}</div>
+        </div>
+      </main>
+    </div>
+  )
+}
