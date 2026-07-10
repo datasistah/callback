@@ -56,9 +56,9 @@ export default function ProfilePage() {
       <h1 className="text-2xl font-semibold tracking-tight text-ink">
         Base profile
       </h1>
-      <p className="mt-1 text-sm text-gray-500">
+      <p className="mt-1 text-sm text-muted">
         Paste your master resume or profile once. Every tailored resume and
-        cover letter draws from this.
+        cover letter draws from this — and it seeds your Career Vault.
       </p>
 
       <ErrorBanner message={loadError} className="mt-6" />
@@ -93,11 +93,11 @@ export default function ProfilePage() {
               setContent(e.target.value)
               setSaved(false)
             }}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm leading-relaxed outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+            className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm leading-relaxed text-ink placeholder-muted/60 outline-none focus:border-accent focus:ring-1 focus:ring-accent"
             placeholder="Paste your full resume or professional history here…"
           />
           {!contentValid && (
-            <p className="mt-1 text-xs text-gray-400">
+            <p className="mt-1 text-xs text-muted">
               Add your history so tailoring has something to work from.
             </p>
           )}

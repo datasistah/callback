@@ -64,9 +64,26 @@ In `~/Documents/repos/multi-agent-course-sprint-zero`:
     `migrations/*.sql` in order.
   - Tests: `server/tests/vault.unit.test.js` (hermetic — embedder, chunking, grounding, mock
     orchestration; 7/7 pass).
-  - **Next:** wire the Vault UI (dark-mode page) + provenance display in the tailored-resume view.
-    Optional: `ollama pull nomic-embed-text` for real semantic embeddings (deterministic ranking
-    works today but absolute cosine is low; tune `GROUNDEDNESS_THRESHOLD` for the LLM tailor path).
+- **Phase 1 frontend — DONE (uncommitted)**: dark-mode-first UI + Career Vault + provenance.
+  - Whole client converted to a dark, slick/professional theme. New semantic Tailwind tokens
+    in `client/tailwind.config.js` (`bg`, `surface`, `surface-hover`, `border`, `ink` redefined
+    to light text, `muted`, brightened `accent`); `index.css` sets `color-scheme: dark`. Every
+    page/component (marketing, auth, board, profile, job detail, shared components) restyled.
+  - `client/src/pages/VaultPage.jsx` — dark Career Vault page: list, add/edit/delete items,
+    kind filter chips with counts, "Build from profile" button. Routed at `/app/vault` (see
+    `App.jsx`) with a nav entry in `AppLayout.jsx`. Wordmark rebranded JobTailor→Callback.
+  - Provenance display in `JobDetailPage.jsx` (`ProvenancePanel`): every tailored bullet shows a
+    green citation chip (source_title) + similarity %, an "N / M bullets grounded" counter, and
+    flags `grounded === false` bullets amber as "Unverified — no matching vault source".
+  - API layer `client/src/api/client.js` extended: `listVault`/`createVaultItem`/`updateVaultItem`/
+    `deleteVaultItem`/`buildVaultFromProfile`/`searchVault`.
+  - Verified end-to-end in-browser against the live backend (demo login, 10 seeded items load,
+    tailor → 6/6 grounded provenance, create/delete round-trip, prod build clean). `.claude/launch.json`
+    added for `server` (node) + `client` (vite) preview.
+  - **Next:** Phase 2 (JD-based interview question generation). Optional: `ollama pull nomic-embed-text`
+    for real semantic embeddings; tune `GROUNDEDNESS_THRESHOLD` for the LLM tailor path (the
+    deterministic path grounds every bullet, so the amber "unverified" state only appears on the
+    LLM path).
 
 ## Phases (planned)
 

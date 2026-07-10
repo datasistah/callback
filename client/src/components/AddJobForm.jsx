@@ -63,13 +63,13 @@ export default function AddJobForm({ onCreate }) {
   }
 
   const inputClass =
-    'mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent'
+    'mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-ink placeholder-muted/60 outline-none focus:border-accent focus:ring-1 focus:ring-accent'
 
   return (
     <form
       onSubmit={handleSubmit}
       noValidate
-      className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm"
+      className="rounded-lg border border-border bg-surface p-5 shadow-sm"
     >
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-base font-semibold text-ink">Add a job</h3>
@@ -79,7 +79,7 @@ export default function AddJobForm({ onCreate }) {
             reset()
             setOpen(false)
           }}
-          className="text-sm text-gray-400 hover:text-ink"
+          className="text-sm text-muted hover:text-ink"
         >
           Cancel
         </button>
@@ -102,7 +102,7 @@ export default function AddJobForm({ onCreate }) {
             placeholder="Senior Machine Learning Engineer"
           />
           {touched.title && !titleValid && (
-            <p className="mt-1 text-xs text-red-600">Title is required.</p>
+            <p className="mt-1 text-xs text-red-400">Title is required.</p>
           )}
         </div>
         <div>
@@ -122,14 +122,14 @@ export default function AddJobForm({ onCreate }) {
             placeholder="Northwind AI"
           />
           {touched.company && !companyValid && (
-            <p className="mt-1 text-xs text-red-600">Company is required.</p>
+            <p className="mt-1 text-xs text-red-400">Company is required.</p>
           )}
         </div>
       </div>
 
       <div className="mt-4">
         <label htmlFor="url" className="block text-sm font-medium text-ink">
-          Job URL <span className="text-gray-400">(optional)</span>
+          Job URL <span className="text-muted">(optional)</span>
         </label>
         <input
           id="url"
@@ -159,7 +159,7 @@ export default function AddJobForm({ onCreate }) {
           placeholder="Paste the full job description here…"
         />
         {touched.description && !descriptionValid && (
-          <p className="mt-1 text-xs text-red-600">Description is required.</p>
+          <p className="mt-1 text-xs text-red-400">Description is required.</p>
         )}
       </div>
 

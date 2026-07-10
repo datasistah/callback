@@ -12,23 +12,26 @@ export default function AppLayout() {
 
   const linkClass = ({ isActive }) =>
     `text-sm font-medium transition ${
-      isActive ? 'text-accent' : 'text-gray-600 hover:text-ink'
+      isActive ? 'text-accent-hover' : 'text-muted hover:text-ink'
     }`
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="border-b border-gray-200 bg-white">
+    <div className="min-h-screen bg-bg">
+      <header className="border-b border-border bg-surface/60 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-8">
             <Link
               to="/app/board"
               className="text-lg font-semibold tracking-tight text-ink"
             >
-              Job<span className="text-accent">Tailor</span>
+              Call<span className="text-accent-hover">back</span>
             </Link>
             <nav className="flex items-center gap-6">
               <NavLink to="/app/board" className={linkClass}>
                 Board
+              </NavLink>
+              <NavLink to="/app/vault" className={linkClass}>
+                Career Vault
               </NavLink>
               <NavLink to="/app/profile" className={linkClass}>
                 Base profile
@@ -36,13 +39,13 @@ export default function AppLayout() {
             </nav>
           </div>
           <div className="flex items-center gap-4">
-            <span className="hidden text-sm text-gray-500 sm:inline">
+            <span className="hidden text-sm text-muted sm:inline">
               {user?.email}
             </span>
             <button
               onClick={handleLogout}
               data-testid="logout-button"
-              className="rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 transition hover:bg-gray-100"
+              className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-muted transition hover:bg-surface-hover hover:text-ink"
             >
               Log out
             </button>

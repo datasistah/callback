@@ -1,19 +1,19 @@
 // Renders the 0–100 match score plus the factor breakdown:
 // matched keywords, missing keywords, skills coverage.
 function scoreTone(value) {
-  if (value >= 80) return 'text-emerald-600'
-  if (value >= 55) return 'text-amber-600'
-  return 'text-red-600'
+  if (value >= 80) return 'text-emerald-400'
+  if (value >= 55) return 'text-amber-400'
+  return 'text-red-400'
 }
 
 function Chips({ items, tone }) {
   if (!items || items.length === 0) {
-    return <p className="text-xs text-gray-400">None</p>
+    return <p className="text-xs text-muted">None</p>
   }
   const toneClass =
     tone === 'matched'
-      ? 'bg-emerald-50 text-emerald-700'
-      : 'bg-red-50 text-red-700'
+      ? 'bg-emerald-500/15 text-emerald-300'
+      : 'bg-red-500/15 text-red-300'
   return (
     <div className="flex flex-wrap gap-1.5">
       {items.map((kw) => (
@@ -35,7 +35,7 @@ export default function ScoreCard({ score }) {
   return (
     <div
       data-testid="score-card"
-      className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm"
+      className="rounded-lg border border-border bg-surface p-6 shadow-sm"
     >
       <div className="flex items-center gap-6">
         <div className="text-center">
@@ -45,16 +45,16 @@ export default function ScoreCard({ score }) {
           >
             {score.value}
           </div>
-          <div className="mt-1 text-xs uppercase tracking-wide text-gray-400">
+          <div className="mt-1 text-xs uppercase tracking-wide text-muted">
             match
           </div>
         </div>
         <div className="flex-1">
-          <div className="mb-1 flex items-center justify-between text-xs text-gray-500">
+          <div className="mb-1 flex items-center justify-between text-xs text-muted">
             <span>Skills coverage</span>
             <span>{coveragePct}%</span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-bg">
             <div
               className="h-full rounded-full bg-accent"
               style={{ width: `${coveragePct}%` }}
@@ -65,13 +65,13 @@ export default function ScoreCard({ score }) {
 
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
         <div>
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
             Matched keywords
           </h4>
           <Chips items={score.matched_keywords} tone="matched" />
         </div>
         <div>
-          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <h4 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted">
             Missing keywords
           </h4>
           <Chips items={score.missing_keywords} tone="missing" />

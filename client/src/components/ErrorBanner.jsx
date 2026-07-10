@@ -3,9 +3,9 @@ export default function ErrorBanner({ message, tone = 'error', className = '' })
   if (!message) return null
 
   const tones = {
-    error: 'bg-red-50 text-red-700 border-red-200',
-    warning: 'bg-amber-50 text-amber-800 border-amber-200',
-    info: 'bg-indigo-50 text-indigo-800 border-indigo-200',
+    error: 'bg-red-500/10 text-red-300 border-red-500/30',
+    warning: 'bg-amber-500/10 text-amber-300 border-amber-500/30',
+    info: 'bg-accent/10 text-accent-hover border-accent/30',
   }
 
   return (

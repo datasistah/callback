@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 function Wordmark() {
   return (
     <span className="text-lg font-semibold tracking-tight text-ink">
-      Call<span className="text-accent">back</span>
+      Call<span className="text-accent-hover">back</span>
     </span>
   )
 }
@@ -12,28 +12,28 @@ export default function LandingPage() {
   const year = new Date().getFullYear()
 
   return (
-    <div className="min-h-screen bg-white text-ink">
+    <div className="min-h-screen bg-bg text-ink">
       {/* Top nav */}
-      <header className="border-b border-gray-100">
+      <header className="border-b border-border">
         <nav className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-5">
           <Wordmark />
           <div className="flex items-center gap-6">
             <a
               href="#features"
-              className="hidden text-sm text-gray-600 hover:text-ink sm:inline"
+              className="hidden text-sm text-muted hover:text-ink sm:inline"
             >
               Features
             </a>
             <a
               href="#pricing"
-              className="hidden text-sm text-gray-600 hover:text-ink sm:inline"
+              className="hidden text-sm text-muted hover:text-ink sm:inline"
             >
               Pricing
             </a>
             <Link
               to="/login"
               data-testid="nav-login"
-              className="text-sm font-medium text-gray-700 hover:text-ink"
+              className="text-sm font-medium text-muted hover:text-ink"
             >
               Log in
             </Link>
@@ -53,7 +53,7 @@ export default function LandingPage() {
         <h1 className="mx-auto max-w-3xl text-5xl font-bold leading-tight tracking-tight sm:text-6xl">
           Tailor every application. Score every fit before you apply.
         </h1>
-        <p className="mx-auto mt-6 max-w-xl text-lg text-gray-600">
+        <p className="mx-auto mt-6 max-w-xl text-lg text-muted">
           Callback turns one saved job into a tailored resume, a matching cover
           letter, and a 0–100 match score that tells you what is still missing.
         </p>
@@ -68,24 +68,24 @@ export default function LandingPage() {
           <Link
             to="/login"
             data-testid="hero-login"
-            className="text-base font-medium text-gray-700 hover:text-ink"
+            className="text-base font-medium text-muted hover:text-ink"
           >
             Log in →
           </Link>
         </div>
 
         {/* Stylised product mockup — a pipeline board, no images. */}
-        <div className="mx-auto mt-16 max-w-4xl rounded-xl border border-gray-200 bg-gray-50 p-4 shadow-sm">
+        <div className="mx-auto mt-16 max-w-4xl rounded-xl border border-border bg-surface p-4 shadow-sm">
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              { label: 'Bookmarked', count: 4, tone: 'bg-gray-200' },
-              { label: 'Applied', count: 3, tone: 'bg-indigo-200' },
-              { label: 'Interviewing', count: 2, tone: 'bg-amber-200' },
-              { label: 'Offer', count: 1, tone: 'bg-emerald-200' },
+              { label: 'Bookmarked', count: 4, tone: 'bg-slate-500/30 text-slate-200' },
+              { label: 'Applied', count: 3, tone: 'bg-accent/30 text-accent-hover' },
+              { label: 'Interviewing', count: 2, tone: 'bg-amber-500/25 text-amber-200' },
+              { label: 'Offer', count: 1, tone: 'bg-emerald-500/25 text-emerald-200' },
             ].map((col) => (
-              <div key={col.label} className="rounded-lg bg-white p-3 text-left">
+              <div key={col.label} className="rounded-lg bg-bg p-3 text-left">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-gray-500">
+                  <span className="text-xs font-semibold text-muted">
                     {col.label}
                   </span>
                   <span className={`rounded-full px-2 text-xs ${col.tone}`}>
@@ -97,10 +97,10 @@ export default function LandingPage() {
                     (_, i) => (
                       <div
                         key={i}
-                        className="rounded-md border border-gray-100 bg-gray-50 p-2"
+                        className="rounded-md border border-border bg-surface-hover p-2"
                       >
-                        <div className="h-2 w-3/4 rounded bg-gray-300" />
-                        <div className="mt-1.5 h-2 w-1/2 rounded bg-gray-200" />
+                        <div className="h-2 w-3/4 rounded bg-border" />
+                        <div className="mt-1.5 h-2 w-1/2 rounded bg-border/60" />
                       </div>
                     )
                   )}
@@ -112,7 +112,7 @@ export default function LandingPage() {
       </section>
 
       {/* Three-up feature row */}
-      <section id="features" className="border-t border-gray-100 bg-white">
+      <section id="features" className="border-t border-border">
         <div className="mx-auto max-w-[1200px] px-6 py-24">
           <div className="grid gap-10 sm:grid-cols-3">
             {[
@@ -133,11 +133,11 @@ export default function LandingPage() {
               },
             ].map((f) => (
               <div key={f.title}>
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-50 text-xl text-accent">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/15 text-xl text-accent-hover">
                   {f.icon}
                 </div>
                 <h3 className="mt-4 text-lg font-semibold">{f.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-gray-600">
+                <p className="mt-2 text-sm leading-relaxed text-muted">
                   {f.desc}
                 </p>
               </div>
@@ -147,7 +147,7 @@ export default function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section className="border-t border-gray-100 bg-gray-50">
+      <section className="border-t border-border bg-surface/30">
         <div className="mx-auto max-w-[1200px] px-6 py-24">
           <h2 className="text-center text-3xl font-bold tracking-tight">
             How it works
@@ -171,7 +171,7 @@ export default function LandingPage() {
                 <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white">
                   {s.n}
                 </div>
-                <p className="mt-4 text-sm leading-relaxed text-gray-600">
+                <p className="mt-4 text-sm leading-relaxed text-muted">
                   {s.text}
                 </p>
               </div>
@@ -181,56 +181,58 @@ export default function LandingPage() {
       </section>
 
       {/* Social proof */}
-      <section id="pricing" className="border-t border-gray-100 bg-white">
+      <section id="pricing" className="border-t border-border">
         <div className="mx-auto max-w-[1200px] px-6 py-20 text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
             Trusted by teams at
           </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-12 gap-y-4 text-lg font-semibold text-gray-400">
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-12 gap-y-4 text-lg font-semibold text-muted">
             <span>Northwind</span>
             <span>Acme</span>
             <span>Globex</span>
             <span>Initech</span>
             <span>Hooli</span>
           </div>
-          <p className="mt-8 text-sm text-gray-500">
+          <p className="mt-8 text-sm text-muted">
             Every feature is free for every signed-in user. No credits, no tiers.
           </p>
         </div>
       </section>
 
       {/* Final CTA */}
-      <section className="border-t border-gray-100 bg-ink">
-        <div className="mx-auto max-w-[1200px] px-6 py-24 text-center">
-          <h2 className="text-4xl font-bold tracking-tight text-white">
-            Ready to ship better applications?
-          </h2>
-          <p className="mx-auto mt-4 max-w-md text-gray-300">
-            Stop guessing whether your resume fits. Score it, fix it, then apply.
-          </p>
-          <Link
-            to="/signup"
-            data-testid="footer-cta-signup"
-            className="mt-8 inline-block rounded-md bg-white px-7 py-3 text-base font-medium text-ink transition hover:bg-gray-100"
-          >
-            Get started
-          </Link>
+      <section className="border-t border-border">
+        <div className="mx-auto max-w-[1200px] px-6 py-24">
+          <div className="rounded-2xl border border-border bg-gradient-to-br from-surface to-bg px-6 py-16 text-center">
+            <h2 className="text-4xl font-bold tracking-tight text-ink">
+              Ready to ship better applications?
+            </h2>
+            <p className="mx-auto mt-4 max-w-md text-muted">
+              Stop guessing whether your resume fits. Score it, fix it, then apply.
+            </p>
+            <Link
+              to="/signup"
+              data-testid="footer-cta-signup"
+              className="mt-8 inline-block rounded-md bg-accent px-7 py-3 text-base font-medium text-white transition hover:bg-accent-hover"
+            >
+              Get started
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-100 bg-white">
+      <footer className="border-t border-border bg-surface/40">
         <div className="mx-auto max-w-[1200px] px-6 py-16">
           <div className="grid gap-8 sm:grid-cols-4">
             <div>
               <Wordmark />
-              <p className="mt-3 text-sm text-gray-500">
+              <p className="mt-3 text-sm text-muted">
                 Tailor every application.
               </p>
             </div>
             <div>
               <h4 className="text-sm font-semibold text-ink">Product</h4>
-              <ul className="mt-3 space-y-2 text-sm text-gray-500">
+              <ul className="mt-3 space-y-2 text-sm text-muted">
                 <li>
                   <a href="#features" className="hover:text-ink">
                     Features
@@ -250,7 +252,7 @@ export default function LandingPage() {
             </div>
             <div>
               <h4 className="text-sm font-semibold text-ink">Company</h4>
-              <ul className="mt-3 space-y-2 text-sm text-gray-500">
+              <ul className="mt-3 space-y-2 text-sm text-muted">
                 <li>
                   <a href="#" className="hover:text-ink">
                     About
@@ -270,7 +272,7 @@ export default function LandingPage() {
             </div>
             <div>
               <h4 className="text-sm font-semibold text-ink">Resources</h4>
-              <ul className="mt-3 space-y-2 text-sm text-gray-500">
+              <ul className="mt-3 space-y-2 text-sm text-muted">
                 <li>
                   <a href="#" className="hover:text-ink">
                     Guide
@@ -289,7 +291,7 @@ export default function LandingPage() {
               </ul>
             </div>
           </div>
-          <p className="mt-12 border-t border-gray-100 pt-6 text-sm text-gray-400">
+          <p className="mt-12 border-t border-border pt-6 text-sm text-muted">
             © {year} Callback. All rights reserved.
           </p>
         </div>

@@ -11,6 +11,69 @@ function describe(err, fallback) {
   return err?.message || fallback
 }
 
+// Provenance panel: every tailored bullet, traced back to the Career Vault item
+// it was grounded in. Bullets that failed the groundedness check are flagged so
+// the user knows not to trust them blindly (RAG hallucination guardrail).
+function ProvenancePanel({ provenance }) {
+  if (!provenance || provenance.length === 0) return null
+
+  const groundedCount = provenance.filter((p) => p.grounded).length
+  const total = provenance.length
+
+  return (
+    <div
+      data-testid="provenance-panel"
+      className="mt-4 rounded-lg border border-border bg-surface/60 p-4"
+    >
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-ink">Provenance</h3>
+        <span className="text-xs text-muted">
+          <span className="font-medium text-emerald-300">{groundedCount}</span>
+          {' / '}
+          {total} bullets grounded
+        </span>
+      </div>
+
+      <ul className="space-y-2">
+        {provenance.map((p, i) => (
+          <li
+            key={p.source_id ? `${p.source_id}-${i}` : i}
+            data-testid="provenance-bullet"
+            className={`rounded-md border px-3 py-2 ${
+              p.grounded
+                ? 'border-border bg-bg/40'
+                : 'border-amber-500/40 bg-amber-500/10'
+            }`}
+          >
+            <p className="text-sm leading-relaxed text-ink">{p.text}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              {p.grounded ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-300">
+                  <span aria-hidden>✓</span>
+                  {p.source_title || 'Vault source'}
+                </span>
+              ) : (
+                <span
+                  data-testid="unverified-flag"
+                  className="inline-flex items-center gap-1 rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-medium text-amber-300"
+                >
+                  <span aria-hidden>⚠</span>
+                  Unverified — no matching vault source
+                </span>
+              )}
+              {typeof p.similarity === 'number' && (
+                <span className="text-xs text-muted">
+                  {Math.round(p.similarity * 100)}% match
+                </span>
+              )}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export default function JobDetailPage() {
   const { id } = useParams()
   const api = useApi()
@@ -114,7 +177,7 @@ export default function JobDetailPage() {
         <ErrorBanner message={loadError} />
         <Link
           to="/app/board"
-          className="mt-6 inline-block text-sm font-medium text-accent hover:underline"
+          className="mt-6 inline-block text-sm font-medium text-accent-hover hover:underline"
         >
           ← Back to board
         </Link>
@@ -123,12 +186,13 @@ export default function JobDetailPage() {
   }
 
   const hasResume = Boolean(resumeText.trim())
+  const provenance = job.resume?.provenance || []
 
   return (
     <div>
       <Link
         to="/app/board"
-        className="text-sm font-medium text-gray-500 hover:text-ink"
+        className="text-sm font-medium text-muted hover:text-ink"
       >
         ← Back to board
       </Link>
@@ -138,7 +202,7 @@ export default function JobDetailPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-ink">
             {job.title}
           </h1>
-          <p className="mt-1 text-sm text-gray-500">
+          <p className="mt-1 text-sm text-muted">
             {job.company}
             {job.url && (
               <>
@@ -147,7 +211,7 @@ export default function JobDetailPage() {
                   href={job.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="text-accent hover:underline"
+                  className="text-accent-hover hover:underline"
                 >
                   View posting
                 </a>
@@ -155,7 +219,7 @@ export default function JobDetailPage() {
             )}
           </p>
         </div>
-        <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-600">
+        <span className="rounded-full border border-border bg-surface px-3 py-1 text-xs font-medium text-muted">
           {job.status}
         </span>
       </div>
@@ -166,7 +230,7 @@ export default function JobDetailPage() {
           onClick={handleTailor}
           disabled={tailorState.busy}
           data-testid="tailor-resume-button"
-          className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-ink transition hover:bg-gray-50 disabled:opacity-50"
+          className="rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-ink transition hover:bg-surface-hover disabled:opacity-50"
         >
           {tailorState.busy ? 'Tailoring…' : 'Tailor resume'}
         </button>
@@ -174,7 +238,7 @@ export default function JobDetailPage() {
           onClick={handleCoverLetter}
           disabled={coverState.busy}
           data-testid="cover-letter-button"
-          className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-ink transition hover:bg-gray-50 disabled:opacity-50"
+          className="rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-ink transition hover:bg-surface-hover disabled:opacity-50"
         >
           {coverState.busy ? 'Generating…' : 'Generate cover letter'}
         </button>
@@ -195,7 +259,7 @@ export default function JobDetailPage() {
         {job.score ? (
           <ScoreCard score={job.score} />
         ) : (
-          <div className="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-500">
+          <div className="rounded-lg border border-dashed border-border bg-surface/40 p-6 text-sm text-muted">
             No score yet. Tailor or add a resume, then click{' '}
             <span className="font-medium text-ink">Score match</span> to see how
             well it fits this job.
@@ -222,7 +286,7 @@ export default function JobDetailPage() {
             }}
             data-testid="resume-editor"
             placeholder="Tailor a resume above, or paste one here, then save and score it."
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm leading-relaxed outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+            className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm leading-relaxed text-ink placeholder-muted/60 outline-none focus:border-accent focus:ring-1 focus:ring-accent"
           />
           <div className="mt-3 flex items-center gap-3">
             <button
@@ -234,9 +298,12 @@ export default function JobDetailPage() {
               {resumeSave.busy ? 'Saving…' : 'Save resume'}
             </button>
             {resumeDirty && (
-              <span className="text-xs text-gray-400">Unsaved changes</span>
+              <span className="text-xs text-muted">Unsaved changes</span>
             )}
           </div>
+
+          {/* Where each tailored bullet came from — vault-grounded provenance. */}
+          <ProvenancePanel provenance={provenance} />
         </section>
 
         {/* Cover letter (read-only display) */}
@@ -246,12 +313,12 @@ export default function JobDetailPage() {
           {job.cover_letter?.content ? (
             <div
               data-testid="cover-letter-content"
-              className="whitespace-pre-wrap rounded-md border border-gray-200 bg-white p-4 text-sm leading-relaxed text-gray-800"
+              className="whitespace-pre-wrap rounded-md border border-border bg-surface p-4 text-sm leading-relaxed text-ink/90"
             >
               {job.cover_letter.content}
             </div>
           ) : (
-            <div className="rounded-md border border-dashed border-gray-300 bg-white p-4 text-sm text-gray-500">
+            <div className="rounded-md border border-dashed border-border bg-surface/40 p-4 text-sm text-muted">
               No cover letter yet. Click{' '}
               <span className="font-medium text-ink">Generate cover letter</span>{' '}
               above.
@@ -263,7 +330,7 @@ export default function JobDetailPage() {
       {/* Job description for reference */}
       <section className="mt-8">
         <h2 className="mb-2 text-lg font-semibold text-ink">Job description</h2>
-        <div className="whitespace-pre-wrap rounded-md border border-gray-200 bg-white p-4 text-sm leading-relaxed text-gray-700">
+        <div className="whitespace-pre-wrap rounded-md border border-border bg-surface p-4 text-sm leading-relaxed text-muted">
           {job.description}
         </div>
       </section>

@@ -107,6 +107,19 @@ export function createApi(accessToken) {
     scoreJob: (jobId) =>
       request(`/jobs/${jobId}/score`, { method: 'POST', ...auth }),
     getScore: (jobId) => request(`/jobs/${jobId}/score`, { ...auth }),
+
+    // Career Vault
+    listVault: () => request('/vault', { ...auth }),
+    createVaultItem: (item) =>
+      request('/vault', { method: 'POST', body: item, ...auth }),
+    updateVaultItem: (id, fields) =>
+      request(`/vault/${id}`, { method: 'PUT', body: fields, ...auth }),
+    deleteVaultItem: (id) =>
+      request(`/vault/${id}`, { method: 'DELETE', ...auth }),
+    buildVaultFromProfile: () =>
+      request('/vault/build-from-profile', { method: 'POST', ...auth }),
+    searchVault: (query) =>
+      request('/vault/search', { method: 'POST', body: query, ...auth }),
   }
 }
 

@@ -27,7 +27,7 @@ export default class ErrorBoundary extends Component {
           <h1 className="text-2xl font-semibold text-ink">
             Something went wrong on this page
           </h1>
-          <p className="mt-3 text-gray-600">
+          <p className="mt-3 text-muted">
             {this.state.error?.message ||
               'An unexpected error occurred while rendering this screen.'}
           </p>

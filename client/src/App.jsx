@@ -8,6 +8,7 @@ import AppLayout from './pages/AppLayout.jsx'
 import BoardPage from './pages/BoardPage.jsx'
 import JobDetailPage from './pages/JobDetailPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
+import VaultPage from './pages/VaultPage.jsx'
 
 // Wrap each page in its own error boundary so one broken screen never blanks
 // the whole app (Prod requirement).
@@ -34,6 +35,7 @@ export default function App() {
       >
         <Route index element={<Navigate to="/app/board" replace />} />
         <Route path="board" element={page(<BoardPage />)} />
+        <Route path="vault" element={page(<VaultPage />)} />
         <Route path="jobs/:id" element={page(<JobDetailPage />)} />
         <Route path="profile" element={page(<ProfilePage />)} />
       </Route>

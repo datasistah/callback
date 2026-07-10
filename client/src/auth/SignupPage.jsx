@@ -74,11 +74,11 @@ export default function SignupPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onBlur={() => setTouched((t) => ({ ...t, email: true }))}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+            className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-ink placeholder-muted/60 outline-none focus:border-accent focus:ring-1 focus:ring-accent"
             placeholder="you@example.com"
           />
           {touched.email && !emailValid && (
-            <p className="mt-1 text-xs text-red-600">
+            <p className="mt-1 text-xs text-red-400">
               Enter a valid email address.
             </p>
           )}
@@ -100,11 +100,11 @@ export default function SignupPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             onBlur={() => setTouched((t) => ({ ...t, password: true }))}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+            className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-ink placeholder-muted/60 outline-none focus:border-accent focus:ring-1 focus:ring-accent"
             placeholder="At least 8 characters"
           />
           {touched.password && !passwordValid && (
-            <p className="mt-1 text-xs text-red-600">
+            <p className="mt-1 text-xs text-red-400">
               Password must be at least 8 characters.
             </p>
           )}
@@ -120,12 +120,12 @@ export default function SignupPage() {
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-gray-500">
+      <p className="mt-6 text-center text-sm text-muted">
         Already have an account?{' '}
         <Link
           to="/login"
           data-testid="go-to-login"
-          className="font-medium text-accent hover:underline"
+          className="font-medium text-accent-hover hover:underline"
         >
           Log in
         </Link>

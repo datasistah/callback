@@ -7,10 +7,12 @@ html {
     Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Dark-mode-first: native form controls, scrollbars, etc. follow suit. */
+  color-scheme: dark;
 }
 
 body {
   margin: 0;
-  color: #0a0a0a;
-  background: #ffffff;
+  color: #e8ecf3;
+  background: #0b0f17;
 }
