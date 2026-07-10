@@ -105,10 +105,26 @@ In `~/Documents/repos/multi-agent-course-sprint-zero`:
   - Verified end-to-end in-browser against the live backend (demo login, 10 seeded items load,
     tailor → 6/6 grounded provenance, create/delete round-trip, prod build clean). `.claude/launch.json`
     added for `server` (node) + `client` (vite) preview.
-  - **Next:** Phase 2 (JD-based interview question generation). Optional: `ollama pull nomic-embed-text`
-    for real semantic embeddings; tune `GROUNDEDNESS_THRESHOLD` for the LLM tailor path (the
-    deterministic path grounds every bullet, so the amber "unverified" state only appears on the
-    LLM path).
+- **Phase 2 agentic harness — DONE (step 1 of 3, committed `8710088`)**: tool registry +
+  agent loop + orchestrator in `server/harness/agent/`.
+  - `registry.js`: typed `ToolRegistry` with zero-dep arg validation; core tools
+    `vault_search`, `tailor_bullets`, `check_grounding`, `score_resume` wrap the existing lib
+    functions. Handlers take `(args, ctx)` — `ctx.db` is the RLS-scoped client. This is the
+    seam MCP will expose (Phase 2b, not yet built).
+  - `loop.js`: provider-agnostic reason→act→observe (ReAct) loop over the router's `complete()`
+    using a plain-JSON tool-call protocol (so weak local models can drive it). Requires a model;
+    accepts an injected `complete` for tests. `parseAction` tolerates fenced/noisy JSON.
+  - `orchestrator.js`: deterministic `runPipeline(steps, ctx)` — Module 2's orchestrator pattern
+    with per-step failure isolation + trace. The always-on backbone (mock/local/premium alike).
+  - Wired the resume-tailoring grounded path through an orchestrated pipeline
+    (`vault_search → tailor_bullets → check_grounding`); `buildTailoredResume` contract unchanged.
+  - Tests: `server/tests/agent.unit.test.js` (12/12 hermetic); `vault.unit.test.js` still 7/7.
+    Verified: module graph resolves, server boots clean, tailor route live (401 auth-guarded).
+  - **Next (Phase 2 remaining):** 2b — expose the registry over an MCP server (`@modelcontextprotocol/sdk`);
+    then Phase 3 (question-gen agent) becomes the first *new* agent built on this layer. Optional:
+    `ollama pull nomic-embed-text` for real embeddings; tune `GROUNDEDNESS_THRESHOLD` for the LLM
+    tailor path (the deterministic path grounds every bullet, so the amber "unverified" state only
+    appears on the LLM path).
 
 ## Phases (planned)
 
