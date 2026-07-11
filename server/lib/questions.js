@@ -1,16 +1,17 @@
 // Behavioral interview-question generation.
 //
-// Turns a job description (and, when available, the candidate's Career Vault
-// items) into STAR-eliciting behavioral interview questions. Mirrors lib/ai.js:
+// Turns a JOB DESCRIPTION into the STAR-eliciting behavioral questions a
+// candidate is likely to be ASKED for that role — the goal is interview prep,
+// so questions are derived from the role's responsibilities and required
+// skills, NOT from the candidate's own history. Mirrors lib/ai.js:
 //   - an LLM path (generateQuestionsGrounded) when a provider is configured,
 //   - a deterministic fallback (generateQuestionsFallback) that always works
 //     with no model at all, so the demo runs free.
 //
 // Every question is a plain object { text, competency, source }, which maps
-// one-to-one onto the `questions` table columns. `source` is either a Career
-// Vault item id (a question grounded in the candidate's real experience), the
-// string 'jd' (drawn from a job-description skill), or 'core' (a role-agnostic
-// behavioral competency).
+// one-to-one onto the `questions` table columns. `source` is either 'jd' (drawn
+// from the job description — its skills or the role itself) or 'core' (a
+// role-agnostic behavioral competency).
 import { complete as defaultComplete } from '../harness/llm/index.js';
 import { aiEnabled } from './ai.js';
 import { extractKeywords } from './score.js';
@@ -72,38 +73,38 @@ function companySuffix(job) {
   return job && job.company && job.company.trim() ? ` at ${job.company.trim()}` : '';
 }
 
-// A short, human label for a career item (title, else a trimmed snippet).
-function itemLabel(item) {
-  const title = item && typeof item.title === 'string' ? item.title.trim() : '';
-  if (title) return title;
-  const content = item && typeof item.content === 'string' ? item.content.trim() : '';
-  return content.length > 60 ? `${content.slice(0, 57)}…` : content || 'that experience';
-}
-
-// Deterministic, no-LLM behavioral questions. Blends three sources so the set is
-// varied: the candidate's real Career Vault items (grounded), the job's skills,
-// and role-agnostic behavioral competencies. Round-robins between them so a
-// short interview still samples all three, then trims to `count`.
-export function generateQuestionsFallback({ job, items = [], count = 6 } = {}) {
+// Deterministic, no-LLM behavioral questions — all derived from the JOB, so the
+// candidate can rehearse what they're likely to be asked. Blends three sources
+// for variety: role-fit questions about the job itself, skill questions drawn
+// from the description's keywords, and role-agnostic behavioral competencies.
+// Round-robins between them so a short interview still samples all three, then
+// trims to `count`.
+export function generateQuestionsFallback({ job, count = 6 } = {}) {
   const n = clampCount(count);
   const role = roleLabel(job);
   const at = companySuffix(job);
 
-  const vaultQs = (Array.isArray(items) ? items : []).map((item) => ({
-    text:
-      `You recorded "${itemLabel(item)}". Walk me through it using STAR — ` +
-      'the situation, your task, the actions you took, and the result.',
-    competency: 'Experience deep-dive',
-    source: item.id != null ? String(item.id) : 'vault',
-  }));
+  // Questions about the role itself — the kind almost every interview opens with.
+  const roleQs = [
+    {
+      text: `What draws you to this ${role} role${at}, and why are you a strong fit?`,
+      competency: 'Motivation & fit',
+      source: 'jd',
+    },
+    {
+      text: `Which responsibilities of this ${role} role are you most confident in, and where would you need to ramp up?`,
+      competency: 'Self-awareness',
+      source: 'jd',
+    },
+  ];
 
   const skills = extractKeywords((job && job.description) || '')
     .filter((k) => k.length > 2)
     .slice(0, n);
   const skillQs = skills.map((skill) => ({
     text:
-      `Tell me about a time you applied ${skill} to solve a real problem. ` +
-      'Describe the situation, your specific actions, and the result.',
+      `This role calls for ${skill}. Tell me about a time you applied ${skill} to solve a real problem — ` +
+      'the situation, your specific actions, and the result.',
     competency: `Skill: ${skill}`,
     source: 'jd',
   }));
@@ -117,7 +118,7 @@ export function generateQuestionsFallback({ job, items = [], count = 6 } = {}) {
   // Round-robin across the three pools for variety, then trim to length. Bound
   // the loop by the longest pool so duplicate texts (which dedup drops) can
   // never keep it spinning.
-  const pools = [vaultQs, skillQs, coreQs];
+  const pools = [roleQs, skillQs, coreQs];
   const maxLen = Math.max(0, ...pools.map((p) => p.length));
   const ordered = [];
   const seen = new Set();
@@ -170,10 +171,8 @@ function extractQuestionList(raw) {
 }
 
 // Normalize a parsed question list into { text, competency, source }. Keeps only
-// well-formed questions; normalizes `source` so it either names a real provided
-// item id or is the literal 'jd' / 'core'.
-function parseQuestions(raw, items) {
-  const ids = new Set((items || []).map((i) => String(i.id)));
+// well-formed questions; normalizes `source` to the literal 'jd' or 'core'.
+function parseQuestions(raw) {
   const list = extractQuestionList(raw);
   return list
     .filter((q) => q && typeof q.text === 'string' && q.text.trim())
@@ -183,29 +182,29 @@ function parseQuestions(raw, items) {
         text: q.text.trim(),
         competency:
           typeof q.competency === 'string' && q.competency.trim() ? q.competency.trim() : 'Behavioral',
-        source: ids.has(src) ? src : src === 'jd' ? 'jd' : 'core',
+        source: src === 'jd' ? 'jd' : 'core',
       };
     });
 }
 
-// LLM path: ask the model for behavioral questions grounded in the JD and, when
-// provided, the candidate's real career items. Falls back to the deterministic
-// generator if the model returns nothing usable, so a weak local model can
-// never leave the caller empty-handed.
-export async function generateQuestionsGrounded({ job, items = [], count = 6, complete = defaultComplete } = {}) {
+// LLM path: ask the model for the behavioral questions a candidate is likely to
+// be ASKED for this role, derived from the job description alone — this is
+// interview prep, so nothing about the candidate's own history is assumed. Falls
+// back to the deterministic generator if the model returns nothing usable, so a
+// weak local model can never leave the caller empty-handed.
+export async function generateQuestionsGrounded({ job, count = 6, complete = defaultComplete } = {}) {
   const n = clampCount(count);
   const system =
-    'You are an experienced behavioral interviewer. Write behavioral interview ' +
-    'questions for the target role that each elicit a STAR answer (Situation, ' +
-    'Task, Action, Result). Ground questions in the job description and, where ' +
-    "given, the candidate's real career items — reference them so the candidate " +
-    'can answer from genuine experience. Vary the competencies probed. Return ' +
-    'ONLY a JSON object of the form {"questions":[{"text":"...","competency":' +
-    '"...","source":"<career item id | jd | core>"}]} with no prose.';
-
-  const itemList = (Array.isArray(items) ? items : [])
-    .map((it) => `- id: ${it.id}\n  (${it.kind}) ${it.title}: ${it.content}`)
-    .join('\n');
+    'You are an experienced interviewer helping a candidate PREPARE for an ' +
+    'interview. From the job description, write the behavioral interview ' +
+    'questions the candidate is most likely to be asked for this role. Derive ' +
+    "them from the role's responsibilities and required skills — do NOT assume " +
+    'any particular candidate background. Each question must elicit a STAR ' +
+    'answer (Situation, Task, Action, Result). Vary the competencies probed. ' +
+    'Return ONLY a JSON object of the form {"questions":[{"text":"...",' +
+    '"competency":"...","source":"jd|core"}]} with no prose, where "jd" means ' +
+    'the question is drawn from this job description and "core" means a general ' +
+    'behavioral competency.';
 
   const prompt = [
     `JOB TITLE: ${(job && job.title) || ''}`,
@@ -213,10 +212,7 @@ export async function generateQuestionsGrounded({ job, items = [], count = 6, co
     'JOB DESCRIPTION:',
     (job && job.description) || '',
     '',
-    itemList ? 'CANDIDATE CAREER ITEMS (cite these ids when relevant):' : '',
-    itemList,
-    '',
-    `Generate ${n} behavioral questions. Return JSON only.`,
+    `Generate ${n} likely interview questions for this role. Return JSON only.`,
   ]
     .filter(Boolean)
     .join('\n');
@@ -230,8 +226,8 @@ export async function generateQuestionsGrounded({ job, items = [], count = 6, co
     // caller empty-handed. Fall back to the deterministic generator so a
     // throttled model degrades to sensible questions instead of a 500.
     console.warn(`question_gen: LLM failed, using deterministic fallback (${err.message}).`);
-    return generateQuestionsFallback({ job, items, count: n });
+    return generateQuestionsFallback({ job, count: n });
   }
-  const questions = parseQuestions(raw, items);
-  return questions.length ? questions.slice(0, n) : generateQuestionsFallback({ job, items, count: n });
+  const questions = parseQuestions(raw);
+  return questions.length ? questions.slice(0, n) : generateQuestionsFallback({ job, count: n });
 }

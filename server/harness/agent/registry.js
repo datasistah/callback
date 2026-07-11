@@ -162,44 +162,24 @@ export function createDefaultRegistry() {
   registry.register({
     name: 'question_gen',
     description:
-      'Generate behavioral interview questions (STAR-eliciting) for a job from ' +
-      'its description and, optionally, the candidate\'s Career Vault items so ' +
-      'questions reference their real experience. Uses the LLM when a provider ' +
-      'is configured, otherwise a deterministic fallback. Returns { questions: ' +
-      '[{ text, competency, source }] } where source is a vault item id, "jd", or "core".',
+      'Generate the behavioral interview questions (STAR-eliciting) a candidate ' +
+      'is likely to be ASKED for a job, derived from its description — this is ' +
+      'interview prep, so questions come from the role, not the candidate\'s ' +
+      'history. Uses the LLM when a provider is configured, otherwise a ' +
+      'deterministic fallback. Returns { questions: [{ text, competency, source }] } ' +
+      'where source is "jd" (from the job description) or "core" (a general competency).',
     params: {
       job: {
         type: 'object',
         required: true,
         description: 'The target job: { title, company, description }.',
       },
-      items: {
-        type: 'array',
-        description: 'Optional Career Vault items to ground questions in the candidate\'s experience.',
-      },
       count: { type: 'number', description: 'How many questions to generate (default 6, max 12).' },
     },
-    handler: async ({ job, items, count }, ctx) => {
-      // Keep only usable item *objects*. Weak models routinely pass the item
-      // ids they saw from vault_search (a bare array of strings) instead of the
-      // objects, or omit items entirely — so we can't trust `items` to carry
-      // real content. When we lack usable items but have db access, retrieve
-      // them here. This keeps grounding from depending on the model faithfully
-      // copying structured data between tool calls (a core harness guarantee).
-      const provided = (Array.isArray(items) ? items : []).filter(
-        (it) => it && typeof it === 'object' && (it.content || it.title)
-      );
-      let sourceItems = provided;
-      if (provided.length === 0 && ctx && ctx.db) {
-        try {
-          sourceItems = await retrieveCareerItems(ctx.db, { job });
-        } catch {
-          sourceItems = [];
-        }
-      }
+    handler: async ({ job, count }) => {
       const questions = aiEnabled()
-        ? await generateQuestionsGrounded({ job, items: sourceItems, count })
-        : generateQuestionsFallback({ job, items: sourceItems, count });
+        ? await generateQuestionsGrounded({ job, count })
+        : generateQuestionsFallback({ job, count });
       return { questions };
     },
   });

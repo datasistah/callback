@@ -17,15 +17,15 @@ function describe(err, fallback) {
   return err?.message || fallback
 }
 
-// A question's `source` is a Career Vault item id (UUID), 'jd', or 'core'.
+// Interview questions are prep material derived from the job, so a question's
+// `source` is 'jd' (drawn from the job description) or 'core' (a role-agnostic
+// behavioral competency).
 function sourceChip(source) {
-  if (!source) return null
   if (source === 'jd')
     return { label: 'From the job description', cls: 'bg-sky-500/15 text-sky-300' }
   if (source === 'core')
     return { label: 'Core competency', cls: 'bg-surface-hover text-muted' }
-  // Anything else is a vault UUID — this question is grounded in real history.
-  return { label: 'Grounded in your Career Vault', cls: 'bg-emerald-500/15 text-emerald-300' }
+  return null
 }
 
 function fmtTime(secs) {

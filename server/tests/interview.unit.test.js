@@ -46,8 +46,8 @@ await test('fallback produces sensible behavioral questions with valid shape', (
     'every question names a competency'
   );
   assert.ok(
-    qs.every((q) => ['jd', 'core', 'vault'].includes(q.source) || typeof q.source === 'string'),
-    'every question carries a source'
+    qs.every((q) => q.source === 'jd' || q.source === 'core'),
+    'every question is sourced from the JD or a core competency'
   );
   // JD skills should surface as skill-based questions.
   assert.ok(qs.some((q) => q.source === 'jd'), 'at least one JD-derived question');
@@ -59,23 +59,24 @@ await test('fallback clamps count into [1,12]', () => {
   assert.strictEqual(generateQuestionsFallback({ job: JOB, count: 0 }).length, 1);
 });
 
-await test('fallback grounds a question in a provided vault item', () => {
-  const items = [{ id: 'item-1', kind: 'project', title: 'Ranking revamp', content: 'Rebuilt the ranking model.' }];
-  const qs = generateQuestionsFallback({ job: JOB, items, count: 6 });
-  const grounded = qs.find((q) => q.source === 'item-1');
-  assert.ok(grounded, 'a question cites the vault item id');
-  assert.ok(grounded.text.includes('Ranking revamp'), 'grounded question references the item');
+await test('fallback blends role-fit, JD-skill, and core-competency questions', () => {
+  // The three pools are round-robined for variety: role-fit + skill questions
+  // are JD-sourced, plus role-agnostic core competencies. A full-length run
+  // should surface both sources.
+  const qs = generateQuestionsFallback({ job: JOB, count: 12 });
+  assert.ok(qs.some((q) => q.source === 'jd'), 'has JD-derived questions');
+  assert.ok(qs.some((q) => q.source === 'core'), 'has core-competency questions');
+  // A JD skill (e.g. "pytorch"/"aws") should surface in a skill question.
+  assert.ok(
+    qs.some((q) => /experience|role|tell me about|describe|walk me through/i.test(q.text)),
+    'questions read as behavioral prompts'
+  );
 });
 
-await test('fallback terminates and dedupes when questions collide', () => {
-  // Two items with the SAME label produce identical question text; dedup drops
-  // the duplicate. A prior round-robin whose termination counted duplicates
-  // spun forever on exactly this input. Must return quickly, no repeats.
-  const items = [
-    { id: 'i1', kind: 'project', title: 'Same Project', content: 'x' },
-    { id: 'i2', kind: 'project', title: 'Same Project', content: 'y' },
-  ];
-  const qs = generateQuestionsFallback({ job: JOB, items, count: 12 });
+await test('fallback dedupes and terminates on a full-length run', () => {
+  // The round-robin dedups by text and is bounded by the longest pool, so it
+  // must return quickly with no repeats even when asked for the max.
+  const qs = generateQuestionsFallback({ job: JOB, count: 12 });
   const texts = qs.map((q) => q.text);
   assert.strictEqual(new Set(texts).size, texts.length, 'no duplicate question texts');
   assert.ok(qs.length > 0);
@@ -135,23 +136,13 @@ await test('question_gen tool rejects a missing required job (schema validation)
   await assert.rejects(() => reg.run('question_gen', { count: 3 }), (e) => e.code === 'invalid_args');
 });
 
-await test('question_gen self-retrieves the vault when handed bare item ids', async () => {
-  // A weak model passes the ids it saw from vault_search, not the objects. With
-  // ctx.db present the tool must re-hydrate from the vault so grounding survives.
+await test('question_gen sources every question from the JD or a core competency', async () => {
   const reg = createDefaultRegistry();
-  const dbItems = [
-    { id: 'v1', kind: 'experience', title: 'Recsys at scale', content: 'Built a PyTorch recommender.' },
-  ];
-  const ctx = {
-    db: {
-      async rpc(fn) {
-        assert.strictEqual(fn, 'match_career_items');
-        return { data: dbItems, error: null };
-      },
-    },
-  };
-  const { questions } = await reg.run('question_gen', { job: JOB, items: ['v1'], count: 6 }, ctx);
-  assert.ok(questions.some((q) => q.source === 'v1'), 'a question is grounded in the re-hydrated item');
+  const { questions } = await reg.run('question_gen', { job: JOB, count: 6 });
+  assert.ok(
+    questions.every((q) => q.source === 'jd' || q.source === 'core'),
+    'no vault-item sources — questions come from the job description'
+  );
 });
 
 // ── Interview agent: deterministic path (no model, no db) ───────────────────
@@ -163,28 +154,17 @@ await test('generateInterviewQuestions runs deterministically with no model', as
 });
 
 // ── Interview agent: model-driven ReAct path (injected fake completer) ──────
-function fakeDb(items) {
-  return {
-    async rpc(fn, args) {
-      assert.strictEqual(fn, 'match_career_items');
-      assert.ok(Array.isArray(args.query_embedding));
-      return { data: items, error: null };
-    },
-  };
-}
-
 await test('generateInterviewQuestions drives the ReAct loop end to end (mode=agentic)', async () => {
-  const items = [{ id: 'a', kind: 'experience', title: 'Recsys at scale', content: 'Built a PyTorch recommender.' }];
-  // Fake model: retrieve the vault, then generate questions, then finish.
+  // Fake model: generate questions from the JD, then finish. No vault step —
+  // questions are prep material derived from the job description alone.
   const replies = [
-    JSON.stringify({ thought: 'retrieve', tool: 'vault_search', args: { job: JOB } }),
-    JSON.stringify({ thought: 'generate', tool: 'question_gen', args: { job: JOB, items, count: 5 } }),
+    JSON.stringify({ thought: 'generate', tool: 'question_gen', args: { job: JOB, count: 5 } }),
     JSON.stringify({ thought: 'done', final: 'generated 5 questions' }),
   ];
   let i = 0;
   const complete = async () => replies[i++];
 
-  const { questions, mode } = await generateInterviewQuestions(fakeDb(items), { job: JOB, count: 5, complete });
+  const { questions, mode } = await generateInterviewQuestions(null, { job: JOB, count: 5, complete });
   assert.strictEqual(mode, 'agentic', 'the loop, not the deterministic path, produced these');
   assert.ok(questions.length > 0, 'questions came from the question_gen tool observation in the trace');
   assert.ok(questions.every((q) => q.text && q.competency), 'well-formed questions out of the loop');
@@ -196,10 +176,8 @@ await test('generateInterviewQuestions recovers loop questions when the model ne
   // agent_max_steps. We must recover the trace from the error and still credit
   // mode=agentic — not discard the work and regenerate via the backstop.
   // Regression: a free OpenRouter model did exactly this, forcing agentic-fallback.
-  const items = [{ id: 'a', kind: 'experience', title: 'Recsys at scale', content: 'Built a PyTorch recommender.' }];
   const replies = [
-    JSON.stringify({ thought: 'retrieve', tool: 'vault_search', args: { job: JOB } }),
-    JSON.stringify({ thought: 'generate', tool: 'question_gen', args: { job: JOB, items, count: 5 } }),
+    JSON.stringify({ thought: 'generate', tool: 'question_gen', args: { job: JOB, count: 5 } }),
     // From here on the model never finalizes — keeps emitting non-final chatter
     // until the step budget is exhausted.
     'I am thinking about the answer but forgot to return JSON.',
@@ -210,7 +188,7 @@ await test('generateInterviewQuestions recovers loop questions when the model ne
   let i = 0;
   const complete = async () => replies[Math.min(i++, replies.length - 1)];
 
-  const { questions, mode } = await generateInterviewQuestions(fakeDb(items), { job: JOB, count: 5, complete });
+  const { questions, mode } = await generateInterviewQuestions(null, { job: JOB, count: 5, complete });
   assert.strictEqual(mode, 'agentic', 'questions recovered from the max-steps error trace');
   assert.ok(questions.length > 0, 'the in-loop question_gen questions survived');
 });
