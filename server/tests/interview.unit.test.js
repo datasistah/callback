@@ -100,6 +100,25 @@ await test('question_gen tool rejects a missing required job (schema validation)
   await assert.rejects(() => reg.run('question_gen', { count: 3 }), (e) => e.code === 'invalid_args');
 });
 
+await test('question_gen self-retrieves the vault when handed bare item ids', async () => {
+  // A weak model passes the ids it saw from vault_search, not the objects. With
+  // ctx.db present the tool must re-hydrate from the vault so grounding survives.
+  const reg = createDefaultRegistry();
+  const dbItems = [
+    { id: 'v1', kind: 'experience', title: 'Recsys at scale', content: 'Built a PyTorch recommender.' },
+  ];
+  const ctx = {
+    db: {
+      async rpc(fn) {
+        assert.strictEqual(fn, 'match_career_items');
+        return { data: dbItems, error: null };
+      },
+    },
+  };
+  const { questions } = await reg.run('question_gen', { job: JOB, items: ['v1'], count: 6 }, ctx);
+  assert.ok(questions.some((q) => q.source === 'v1'), 'a question is grounded in the re-hydrated item');
+});
+
 // ── Interview agent: deterministic path (no model, no db) ───────────────────
 await test('generateInterviewQuestions runs deterministically with no model', async () => {
   const { questions, mode } = await generateInterviewQuestions(null, { job: JOB, count: 6 });

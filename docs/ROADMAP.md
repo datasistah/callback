@@ -152,15 +152,31 @@ In `~/Documents/repos/multi-agent-course-sprint-zero`:
     dedup/termination regression, the `question_gen` tool, the deterministic + injected-completer
     ReAct + fallback agent paths). Agent/MCP registry-name tests updated to 5 tools. All suites green
     (interview 10, agent 12, mcp 5, vault 7).
-  - **Bug found + fixed during verify:** `generateQuestionsFallback`'s round-robin terminated on a
-    total that counted duplicates, so colliding question texts (real vault items do collide) spun a
-    synchronous infinite loop and hung the request. Loop is now index-bounded; regression test added.
-  - Verified E2E against live Supabase (demo login, deterministic path): preview, persist a
-    5-question session (ordered, first bullet grounded in a real vault item id), GET/list, 400 on
-    missing `job_id`, 204 delete with question cascade, 404 after — no server errors.
+  - **Two bugs found + fixed during verify** (both invisible to the hermetic tests, caught only by
+    running the real thing — why the roadmap mandates E2E):
+    1. `generateQuestionsFallback`'s round-robin terminated on a total that counted duplicates, so
+       colliding question texts (real vault items collide) spun a *synchronous* infinite loop and hung
+       the request. Loop is now index-bounded; regression test added.
+    2. In the ReAct path, the weak 3B model calls `vault_search` then passes `question_gen` a bare
+       array of item **ids** (not the objects), starving grounding and collapsing the LLM to fallback
+       templates. Fixed by making `question_gen` **self-heal**: when handed no usable item objects but
+       given `ctx.db`, it re-retrieves the vault itself, so grounding never depends on a weak model
+       faithfully shuttling structured data between tool calls. Regression test added.
+  - **Ollama wired up (free/local path) + agentic path verified E2E.** `ollama pull qwen2.5:3b`
+    (chat) + `nomic-embed-text` (real 768-d embeddings); `server/.env` sets `OLLAMA_ENABLED=1`,
+    `OLLAMA_MODEL=qwen2.5:3b`, `OLLAMA_EMBED_MODEL=nomic-embed-text`; re-seeded so vault embeddings
+    live in the same space as query embeddings. `GET /api/llm/status` → `enabled:true`,
+    `embedding:ollama:nomic-embed-text`.
+    - Deterministic path (no model): verified — preview, persist a 5-question session (ordered,
+      grounded), GET/list, 400 on missing `job_id`, 204 delete w/ cascade, 404 after.
+    - **Agentic path (Ollama):** verified end-to-end and repeatably — `POST /api/interview/sessions`
+      returns `mode:"agentic"` with 5/5 questions **LLM-authored and grounded in real Career Vault
+      item ids** (STAR questions that name Maya's actual work — the 4M-user PyTorch recommender, the
+      eval harness, data pipelines), persisted position-ordered and read back, ~11–15s per 5-question
+      run, no server errors. The loop's malformed-JSON tolerance (re-prompt on an unparseable turn)
+      also exercised live.
   - **Next:** Phase 4 (Interview Studio + swappable voice) — video capture + transcript and the
-    `webspeech`/`realtime` voice seam; a frontend to run these sessions. Optional: `ollama pull
-    qwen2.5:3b` to exercise the `agentic` (model-driven) path end-to-end.
+    `webspeech`/`realtime` voice seam; a frontend to run these sessions.
 
 ## Phases (planned)
 

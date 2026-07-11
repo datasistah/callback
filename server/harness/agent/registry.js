@@ -179,10 +179,27 @@ export function createDefaultRegistry() {
       },
       count: { type: 'number', description: 'How many questions to generate (default 6, max 12).' },
     },
-    handler: async ({ job, items, count }) => {
+    handler: async ({ job, items, count }, ctx) => {
+      // Keep only usable item *objects*. Weak models routinely pass the item
+      // ids they saw from vault_search (a bare array of strings) instead of the
+      // objects, or omit items entirely — so we can't trust `items` to carry
+      // real content. When we lack usable items but have db access, retrieve
+      // them here. This keeps grounding from depending on the model faithfully
+      // copying structured data between tool calls (a core harness guarantee).
+      const provided = (Array.isArray(items) ? items : []).filter(
+        (it) => it && typeof it === 'object' && (it.content || it.title)
+      );
+      let sourceItems = provided;
+      if (provided.length === 0 && ctx && ctx.db) {
+        try {
+          sourceItems = await retrieveCareerItems(ctx.db, { job });
+        } catch {
+          sourceItems = [];
+        }
+      }
       const questions = aiEnabled()
-        ? await generateQuestionsGrounded({ job, items: items || [], count })
-        : generateQuestionsFallback({ job, items: items || [], count });
+        ? await generateQuestionsGrounded({ job, items: sourceItems, count })
+        : generateQuestionsFallback({ job, items: sourceItems, count });
       return { questions };
     },
   });
