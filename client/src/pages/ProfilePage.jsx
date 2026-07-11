@@ -1,16 +1,25 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useApi } from '../api/client.js'
 import Spinner from '../components/Spinner.jsx'
 import ErrorBanner from '../components/ErrorBanner.jsx'
 
+// File-picker accept list. The extractor itself (which pulls in the heavy PDF /
+// DOCX parsers) is dynamically imported only when a file is actually chosen, so
+// those libraries stay out of the main bundle.
+const ACCEPT_ATTR =
+  '.txt,.md,.pdf,.docx,text/plain,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+
 export default function ProfilePage() {
   const api = useApi()
+  const fileInputRef = useRef(null)
   const [content, setContent] = useState('')
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [saveError, setSaveError] = useState('')
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [uploadNote, setUploadNote] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -30,6 +39,27 @@ export default function ProfilePage() {
   }, [load])
 
   const contentValid = content.trim().length > 0
+
+  const handleFile = async (e) => {
+    const file = e.target.files && e.target.files[0]
+    // Reset the input so picking the same file again still fires onChange.
+    e.target.value = ''
+    if (!file) return
+    setSaveError('')
+    setSaved(false)
+    setUploadNote('')
+    setUploading(true)
+    try {
+      const { extractResumeText } = await import('../lib/resumeFile.js')
+      const text = await extractResumeText(file)
+      setContent(text)
+      setUploadNote(`Loaded “${file.name}” — review the text below, then save.`)
+    } catch (err) {
+      setSaveError(err.message || 'Could not read that file.')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const handleSave = async (e) => {
     e.preventDefault()
@@ -57,7 +87,7 @@ export default function ProfilePage() {
         Base profile
       </h1>
       <p className="mt-1 text-sm text-muted">
-        Paste your master resume or profile once. Every tailored resume and
+        Upload or paste your master resume once. Every tailored resume and
         cover letter draws from this — and it seeds your Career Vault.
       </p>
 
@@ -77,6 +107,32 @@ export default function ProfilePage() {
               className="mb-4"
             />
           )}
+
+          <div className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-border bg-bg/40 p-3">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={ACCEPT_ATTR}
+              onChange={handleFile}
+              data-testid="resume-file-input"
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              data-testid="upload-resume"
+              className="rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent transition hover:bg-accent hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {uploading ? 'Reading…' : 'Upload résumé file'}
+            </button>
+            <span className="text-xs text-muted">
+              PDF, Word (.docx), or text — read in your browser, nothing leaves your device until you save.
+            </span>
+            {uploadNote && (
+              <p className="w-full text-xs text-emerald-400">{uploadNote}</p>
+            )}
+          </div>
 
           <label
             htmlFor="content"

@@ -1,0 +1,73 @@
+JORDAN A. ELLIS
+Data Scientist
+Austin, TX  |  jordan.ellis@example.com  |  (512) 555-0148
+linkedin.com/in/jordanaellis  |  github.com/jordanaellis
+
+
+OBJECTIVE
+Data scientist with 3+ years turning messy, real-world data into models and
+decisions that ship. Seeking a role where I can own problems end to end — from
+framing the question and building the pipeline to deploying the model and
+measuring its impact — on a team that cares about rigor and users in equal
+measure.
+
+
+EDUCATION
+The University of Texas at Austin
+B.S. in Statistics and Data Science, Minor in Computer Science
+Graduated May 2021  |  GPA 3.8/4.0
+- Honors: Dean's List (6 semesters), Phi Beta Kappa
+- Relevant coursework: Machine Learning, Bayesian Statistics, Convex
+  Optimization, Databases, Distributed Systems, Experimental Design
+- Senior thesis: "Uncertainty-Aware Demand Forecasting for Perishable Retail"
+
+
+EXPERIENCE
+
+Data Scientist  |  Brightline Analytics, Austin, TX
+June 2021 - Present
+- Own the recommendation and ranking models behind the company's B2B retail
+  product, serving ~2.3M scored requests/day.
+- Rebuilt the candidate-ranking pipeline in PyTorch, lifting top-5 click-through
+  by 18% and cutting p95 inference latency from 240ms to 90ms.
+- Designed and ran the A/B testing framework the team now uses for every model
+  launch; shipped 11 experiments in 2023, 7 of which reached significance.
+- Partnered with a difficult external stakeholder to redefine "relevance" for
+  their category, turning a stalled account into a renewed contract.
+- Mentor two junior analysts and run the team's weekly model-review.
+
+Data Science Intern  |  Meridian Health (Digital Health Group), Remote
+May 2020 - August 2020
+- Built a readmission-risk model (gradient-boosted trees) on 140k de-identified
+  patient records, reaching 0.82 AUC and flagged as a candidate for a pilot.
+- Cleaned and reconciled 6 disparate EHR data sources into a single feature
+  store, documenting the lineage so the work outlived my internship.
+- Presented findings to the VP of Clinical Ops; the readmission dashboard I
+  prototyped was adopted by two care-coordination teams.
+
+
+PROJECTS
+
+Transit Delay Predictor  (github.com/jordanaellis/transit-delay)
+- Trained a spatiotemporal model on 2 years of public GTFS + weather data to
+  predict bus arrival delays in Austin to within ~3 minutes.
+- Deployed as a FastAPI service with a small React dashboard; ~400 monthly users.
+
+Grocery Demand Forecasting  (Kaggle — top 4%)
+- Ensemble of LightGBM + a temporal-fusion transformer for perishable-goods
+  demand; placed 61/1,600 teams.
+- Wrote up the feature-engineering approach; the notebook has 300+ upvotes.
+
+LLM Resume Grounding  (side project, 2024)
+- Prototyped a retrieval-augmented tool that checks whether each resume bullet
+  is actually supported by a source document, flagging unsupported claims.
+
+
+SKILLS
+Languages:      Python, SQL, R, a little Go
+ML / Modeling:  PyTorch, scikit-learn, LightGBM/XGBoost, statsmodels,
+                Hugging Face Transformers, time-series forecasting, A/B testing
+Data / Infra:   pandas, Spark, dbt, Airflow, PostgreSQL, Snowflake, feature
+                stores, Docker, AWS (S3, ECS, SageMaker)
+Practice:       experimental design, causal inference basics, model monitoring,
+                data visualization (Plotly, matplotlib), clear technical writing
