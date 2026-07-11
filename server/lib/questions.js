@@ -11,7 +11,7 @@
 // Vault item id (a question grounded in the candidate's real experience), the
 // string 'jd' (drawn from a job-description skill), or 'core' (a role-agnostic
 // behavioral competency).
-import { complete } from '../harness/llm/index.js';
+import { complete as defaultComplete } from '../harness/llm/index.js';
 import { aiEnabled } from './ai.js';
 import { extractKeywords } from './score.js';
 
@@ -135,19 +135,46 @@ export function generateQuestionsFallback({ job, items = [], count = 6 } = {}) {
   return ordered.slice(0, n);
 }
 
-// Parse the {"questions":[...]} array from a model reply, tolerating code fences
-// / stray prose. Keeps only well-formed questions; normalizes `source` so it
-// either names a real provided item id or is the literal 'jd' / 'core'.
+// Pull the question list out of a model reply, tolerating the shapes weak models
+// actually emit: a {"questions":[...]} object, a bare top-level [...] array, and
+// either one wrapped in prose or ```json code fences. Tries the object slice
+// (first { … last }), then the array slice (first [ … last ]), then the whole
+// string, and returns the first parse that yields a usable list. Without this,
+// a model that answered with a bare array silently fell back to templates.
+function extractQuestionList(raw) {
+  const text = String(raw || '');
+  const tryParse = (s) => {
+    try {
+      return JSON.parse(s);
+    } catch {
+      return undefined;
+    }
+  };
+  const toList = (p) =>
+    Array.isArray(p) ? p : Array.isArray(p?.questions) ? p.questions : null;
+
+  const slices = [];
+  const objStart = text.indexOf('{');
+  const objEnd = text.lastIndexOf('}');
+  if (objStart !== -1 && objEnd > objStart) slices.push(text.slice(objStart, objEnd + 1));
+  const arrStart = text.indexOf('[');
+  const arrEnd = text.lastIndexOf(']');
+  if (arrStart !== -1 && arrEnd > arrStart) slices.push(text.slice(arrStart, arrEnd + 1));
+  slices.push(text.trim());
+
+  for (const slice of slices) {
+    const list = toList(tryParse(slice));
+    if (list) return list;
+  }
+  return [];
+}
+
+// Normalize a parsed question list into { text, competency, source }. Keeps only
+// well-formed questions; normalizes `source` so it either names a real provided
+// item id or is the literal 'jd' / 'core'.
 function parseQuestions(raw, items) {
   const ids = new Set((items || []).map((i) => String(i.id)));
-  let parsed;
-  try {
-    const match = String(raw).match(/\{[\s\S]*\}/);
-    parsed = JSON.parse(match ? match[0] : raw);
-  } catch {
-    parsed = null;
-  }
-  const list = Array.isArray(parsed?.questions) ? parsed.questions : [];
+  const list = extractQuestionList(raw);
   return list
     .filter((q) => q && typeof q.text === 'string' && q.text.trim())
     .map((q) => {
@@ -165,7 +192,7 @@ function parseQuestions(raw, items) {
 // provided, the candidate's real career items. Falls back to the deterministic
 // generator if the model returns nothing usable, so a weak local model can
 // never leave the caller empty-handed.
-export async function generateQuestionsGrounded({ job, items = [], count = 6 } = {}) {
+export async function generateQuestionsGrounded({ job, items = [], count = 6, complete = defaultComplete } = {}) {
   const n = clampCount(count);
   const system =
     'You are an experienced behavioral interviewer. Write behavioral interview ' +
@@ -194,7 +221,17 @@ export async function generateQuestionsGrounded({ job, items = [], count = 6 } =
     .filter(Boolean)
     .join('\n');
 
-  const raw = await complete({ task: 'question_gen', system, prompt, maxTokens: 2048 });
+  let raw;
+  try {
+    raw = await complete({ task: 'question_gen', system, prompt, maxTokens: 2048 });
+  } catch (err) {
+    // A provider error — a rate-limited free tier (HTTP 429), a provider outage,
+    // a network blip — is the same situation as empty output: never leave the
+    // caller empty-handed. Fall back to the deterministic generator so a
+    // throttled model degrades to sensible questions instead of a 500.
+    console.warn(`question_gen: LLM failed, using deterministic fallback (${err.message}).`);
+    return generateQuestionsFallback({ job, items, count: n });
+  }
   const questions = parseQuestions(raw, items);
   return questions.length ? questions.slice(0, n) : generateQuestionsFallback({ job, items, count: n });
 }

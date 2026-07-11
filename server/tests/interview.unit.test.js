@@ -8,7 +8,7 @@
 // Run: node tests/interview.unit.test.js  (from server/)
 import assert from 'node:assert';
 import { createDefaultRegistry } from '../harness/agent/index.js';
-import { generateQuestionsFallback } from '../lib/questions.js';
+import { generateQuestionsFallback, generateQuestionsGrounded } from '../lib/questions.js';
 import { generateInterviewQuestions } from '../lib/interview.js';
 
 let pass = 0;
@@ -87,6 +87,41 @@ await test('fallback works with an empty/description-less job', () => {
   assert.ok(qs.every((q) => q.text.trim()), 'still produces real questions from core competencies');
 });
 
+await test('generateQuestionsGrounded falls back to deterministic when the model throws', async () => {
+  // A rate-limited free tier (HTTP 429) or provider outage makes complete()
+  // throw. That must degrade to deterministic questions, never propagate a 500.
+  // Regression: a throttled OpenRouter :free model 500'd the /preview endpoint.
+  const throwing = async () => {
+    throw new Error('OpenRouter 429: temporarily rate-limited upstream');
+  };
+  const qs = await generateQuestionsGrounded({ job: JOB, count: 5, complete: throwing });
+  assert.ok(qs.length > 0, 'still returns questions when the model errors');
+  assert.ok(qs.every((q) => q.text && q.competency), 'well-formed deterministic questions');
+});
+
+await test('generateQuestionsGrounded parses a bare JSON array of questions', async () => {
+  // Some models answer with a top-level [...] instead of {"questions":[...]}.
+  // Regression: that used to slip past the object-only parser and fall back to
+  // deterministic templates, hollowing out the agentic path.
+  const complete = async () =>
+    JSON.stringify([
+      { text: 'Tell me about scaling a recommender to millions of users.', competency: 'Impact', source: 'jd' },
+      { text: 'Describe an A/B test that changed a launch decision.', competency: 'Experimentation', source: 'core' },
+    ]);
+  const qs = await generateQuestionsGrounded({ job: JOB, count: 5, complete });
+  assert.strictEqual(qs.length, 2, 'both questions from the bare array survived');
+  assert.ok(qs.every((q) => q.text && q.competency), 'well-formed');
+  assert.ok(qs.some((q) => q.competency === 'Experimentation'), 'kept model-provided competency');
+});
+
+await test('generateQuestionsGrounded parses questions wrapped in prose / code fences', async () => {
+  const complete = async () =>
+    'Sure! Here are the questions:\n```json\n{"questions":[{"text":"Walk me through a production incident you owned.","competency":"Ownership","source":"core"}]}\n```\nGood luck!';
+  const qs = await generateQuestionsGrounded({ job: JOB, count: 3, complete });
+  assert.strictEqual(qs.length, 1);
+  assert.strictEqual(qs[0].text, 'Walk me through a production incident you owned.');
+});
+
 // ── question_gen registry tool (no LLM → fallback) ──────────────────────────
 await test('question_gen tool returns { questions } via the registry', async () => {
   const reg = createDefaultRegistry();
@@ -153,6 +188,31 @@ await test('generateInterviewQuestions drives the ReAct loop end to end (mode=ag
   assert.strictEqual(mode, 'agentic', 'the loop, not the deterministic path, produced these');
   assert.ok(questions.length > 0, 'questions came from the question_gen tool observation in the trace');
   assert.ok(questions.every((q) => q.text && q.competency), 'well-formed questions out of the loop');
+});
+
+await test('generateInterviewQuestions recovers loop questions when the model never finalizes (mode=agentic)', async () => {
+  // A weak model calls question_gen (producing real questions in the trace) but
+  // then rambles without ever emitting {"final"}, so the loop throws
+  // agent_max_steps. We must recover the trace from the error and still credit
+  // mode=agentic — not discard the work and regenerate via the backstop.
+  // Regression: a free OpenRouter model did exactly this, forcing agentic-fallback.
+  const items = [{ id: 'a', kind: 'experience', title: 'Recsys at scale', content: 'Built a PyTorch recommender.' }];
+  const replies = [
+    JSON.stringify({ thought: 'retrieve', tool: 'vault_search', args: { job: JOB } }),
+    JSON.stringify({ thought: 'generate', tool: 'question_gen', args: { job: JOB, items, count: 5 } }),
+    // From here on the model never finalizes — keeps emitting non-final chatter
+    // until the step budget is exhausted.
+    'I am thinking about the answer but forgot to return JSON.',
+    'Still pondering, no JSON here either.',
+    'More rambling.',
+    'And more.',
+  ];
+  let i = 0;
+  const complete = async () => replies[Math.min(i++, replies.length - 1)];
+
+  const { questions, mode } = await generateInterviewQuestions(fakeDb(items), { job: JOB, count: 5, complete });
+  assert.strictEqual(mode, 'agentic', 'questions recovered from the max-steps error trace');
+  assert.ok(questions.length > 0, 'the in-loop question_gen questions survived');
 });
 
 await test('generateInterviewQuestions falls back when the loop never calls question_gen', async () => {

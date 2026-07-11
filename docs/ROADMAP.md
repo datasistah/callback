@@ -175,6 +175,28 @@ In `~/Documents/repos/multi-agent-course-sprint-zero`:
       eval harness, data pipelines), persisted position-ordered and read back, ~11–15s per 5-question
       run, no server errors. The loop's malformed-JSON tolerance (re-prompt on an unparseable turn)
       also exercised live.
+  - **Hosted OpenRouter path verified + deploy guidance (no Ollama).** Dropped Ollama, re-seeded the
+    vault in the deterministic embedder space (`GET /api/llm/status` → `embedding:"deterministic"`),
+    and ran the agentic path against OpenRouter. Verified `POST /api/interview/preview` → `mode:"agentic"`,
+    **5/5 questions grounded in real Career Vault UUIDs**, richly LLM-authored (recsys optimization,
+    A/B testing, data pipelines, productionizing ML, NLP ticket classifier). Deploy findings:
+    - **`:free` models are unreliable for the loop:** clean-JSON *instruct* models (llama-3.3-70b,
+      gemma, qwen) are heavily rate-limited (HTTP 429); the *reasoning* free models that stay up
+      (gpt-oss, nemotron) spend their token budget on a hidden reasoning channel and return empty
+      `content`, stalling the loop into the deterministic backstop. Output stays correct (grounded
+      questions) but the pure-loop path doesn't complete. Fine as a $0 fallback, not a demo default.
+    - **Recommended deploy default:** a cheap *paid* instruct model — `meta-llama/llama-3.3-70b-instruct`
+      at ~$0.0000166/call (~200k sessions per $35 credit), ~1.5s/call, no 429s, reliable `mode:agentic`.
+    - **Three robustness fixes shipped (all under new hermetic tests):**
+      1. `lib/questions.js` — `generateQuestionsGrounded` now catches a provider error (429/outage)
+         and falls back to deterministic instead of 500ing. (`complete` is now injectable for tests.)
+      2. `lib/interview.js` — recover the loop trace from an `agent_max_steps` error so questions the
+         model already produced aren't discarded (and a redundant backstop call avoided).
+      3. `lib/questions.js` — `parseQuestions` accepts a bare `[...]` array and prose/code-fence-wrapped
+         JSON, not just `{"questions":[...]}`; without it, llama-style replies fell back to templates
+         and hollowed out the agentic path (was 2/5 grounded → now 5/5).
+    - **Open item:** ~60s per agentic run (several sequential LLM calls over a growing transcript) —
+      a Phase 4 latency optimization (streaming, fewer steps, or a smaller reasoning model).
   - **Next:** Phase 4 (Interview Studio + swappable voice) — video capture + transcript and the
     `webspeech`/`realtime` voice seam; a frontend to run these sessions.
 

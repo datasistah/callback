@@ -61,8 +61,9 @@ export async function generateInterviewQuestions(db, { job, count = 6, complete 
   const useModel = Boolean(complete) || llmEnabled();
 
   if (useModel) {
+    let trace = null;
     try {
-      const { trace } = await runAgentLoop({
+      ({ trace } = await runAgentLoop({
         registry,
         goal:
           `Generate ${count} behavioral interview questions for a ` +
@@ -78,17 +79,23 @@ export async function generateInterviewQuestions(db, { job, count = 6, complete 
         allow: ['vault_search', 'question_gen'],
         maxSteps: 6,
         complete,
-      });
-      const questions = questionsFromTrace(trace);
-      if (questions && questions.length) return { questions, mode: 'agentic' };
-    } catch {
-      // Loop failed (unconfigured provider, max steps, provider error) — fall
-      // through to the deterministic path so the caller always gets questions.
+      }));
+    } catch (err) {
+      // The loop can throw agent_max_steps even AFTER the model called
+      // question_gen — a weak model that produced questions but never emitted a
+      // clean {"final"} within the step budget. It attaches the trace to the
+      // error; recover it so we credit and use the questions already generated
+      // rather than discarding them and paying for a redundant backstop call.
+      // Any other failure (unconfigured provider, provider error) leaves trace
+      // null and falls through to the deterministic backstop below.
+      trace = err.trace || null;
     }
+    const questions = trace ? questionsFromTrace(trace) : null;
+    if (questions && questions.length) return { questions, mode: 'agentic' };
     // Model path attempted but yielded nothing usable: deterministic backstop.
     const items = await safeVaultSearch(registry, job, ctx);
-    const { questions } = await registry.run('question_gen', { job, items, count }, ctx);
-    return { questions, mode: 'agentic-fallback' };
+    const { questions: fallbackQuestions } = await registry.run('question_gen', { job, items, count }, ctx);
+    return { questions: fallbackQuestions, mode: 'agentic-fallback' };
   }
 
   // No model configured: direct, deterministic tool calls. Best-effort vault
