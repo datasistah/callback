@@ -18,6 +18,8 @@ export default function ProfilePage() {
   const [saveError, setSaveError] = useState('')
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [seeding, setSeeding] = useState(false)
+  const [seedNote, setSeedNote] = useState('')
   const [uploading, setUploading] = useState(false)
   const [uploadNote, setUploadNote] = useState('')
 
@@ -47,6 +49,7 @@ export default function ProfilePage() {
     if (!file) return
     setSaveError('')
     setSaved(false)
+    setSeedNote('')
     setUploadNote('')
     setUploading(true)
     try {
@@ -61,10 +64,38 @@ export default function ProfilePage() {
     }
   }
 
+  // First-save convenience: seed the Career Vault straight from the profile so
+  // setup is one motion, not two. build-from-profile is additive (it never
+  // deletes), so we only auto-seed when the vault is still empty — a populated
+  // vault is the user's curated record and we must not duplicate into it. Any
+  // re-seeding stays an explicit tap on the Career Vault page. Best-effort: the
+  // profile is already saved, so a vault failure is a soft note, not an error.
+  const maybeSeedVault = async () => {
+    try {
+      const existing = await api.listVault()
+      if (existing && existing.length > 0) return
+      setSeeding(true)
+      const created = await api.buildVaultFromProfile()
+      const n = created?.length || 0
+      if (n > 0) {
+        setSeedNote(
+          `Seeded your Career Vault with ${n} item${n === 1 ? '' : 's'}.`
+        )
+      }
+    } catch {
+      setSeedNote(
+        'Couldn’t auto-seed your Career Vault — open Career Vault to build it.'
+      )
+    } finally {
+      setSeeding(false)
+    }
+  }
+
   const handleSave = async (e) => {
     e.preventDefault()
     setSaveError('')
     setSaved(false)
+    setSeedNote('')
     if (!contentValid) {
       setSaveError('Your base profile cannot be empty.')
       return
@@ -74,6 +105,7 @@ export default function ProfilePage() {
       const updated = await api.saveProfile(content.trim())
       setContent(updated?.content || content.trim())
       setSaved(true)
+      await maybeSeedVault()
     } catch (err) {
       setSaveError(err.message || 'Could not save your profile.')
     } finally {
@@ -102,7 +134,9 @@ export default function ProfilePage() {
           <ErrorBanner message={saveError} className="mb-4" />
           {saved && (
             <ErrorBanner
-              message="Base profile saved."
+              message={
+                seedNote ? `Base profile saved. ${seedNote}` : 'Base profile saved.'
+              }
               tone="info"
               className="mb-4"
             />
@@ -148,6 +182,7 @@ export default function ProfilePage() {
             onChange={(e) => {
               setContent(e.target.value)
               setSaved(false)
+              setSeedNote('')
             }}
             className="mt-1 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm leading-relaxed text-ink placeholder-muted/60 outline-none focus:border-accent focus:ring-1 focus:ring-accent"
             placeholder="Paste your full resume or professional history here…"
@@ -165,7 +200,7 @@ export default function ProfilePage() {
               disabled={!contentValid || saving}
               className="rounded-md bg-accent px-5 py-2.5 text-sm font-medium text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {saving ? 'Saving…' : 'Save profile'}
+              {saving ? (seeding ? 'Seeding vault…' : 'Saving…') : 'Save profile'}
             </button>
           </div>
         </form>
