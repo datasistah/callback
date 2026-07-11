@@ -68,6 +68,39 @@ await test('chunkProfileIntoItems splits bullets and skills into atomic items', 
   assert.ok(experience[0].title.includes('Northstar'), 'bullet not tagged with role heading');
 });
 
+await test('chunkProfileIntoItems handles real-world PDF/Word résumé formatting', () => {
+  // What actually comes out of a PDF/Word résumé: ● bullets (not ASCII "-"),
+  // Title-Case / labelled headings, and a "Category: a, b, c" skills line.
+  const profile = [
+    'Professional Summary',
+    'Data scientist shipping models end to end.',
+    'Work Experience',
+    'Brightline Analytics — Data Scientist (2021–present)',
+    '● Rebuilt ranking in PyTorch, +18% CTR.',
+    '● Owns the A/B testing framework.',
+    'Technical Skills',
+    'Languages: Python, SQL, R',
+    'Infra: AWS (S3, ECS, SageMaker), Docker',
+  ].join('\n');
+
+  const items = chunkProfileIntoItems(profile);
+  const experience = items.filter((i) => i.kind === 'experience');
+  const skills = items.filter((i) => i.kind === 'skill');
+  const summary = items.filter((i) => i.kind === 'achievement');
+
+  assert.strictEqual(experience.length, 2, '● bullets recognized as experience items');
+  assert.ok(experience[0].title.includes('Brightline'), 'glyph bullet tagged with role heading');
+  assert.ok(!experience[0].content.startsWith('●'), 'the bullet glyph is stripped from content');
+  assert.strictEqual(summary.length, 1, 'Title-Case "Professional Summary" recognized');
+  // Category labels dropped; "/" preserved so S3/ECS stays one skill.
+  const skillNames = skills.map((s) => s.title);
+  assert.ok(skillNames.includes('Python') && skillNames.includes('SQL'), 'labelled skills split');
+  assert.ok(!skillNames.some((s) => /^Languages:/.test(s)), 'the "Languages:" label was dropped');
+  // Commas inside parentheses don't split — the parenthetical stays one skill.
+  assert.ok(skillNames.includes('AWS (S3, ECS, SageMaker)'), 'parenthetical list kept intact');
+  assert.ok(skillNames.includes('Docker'), 'the skill after the parenthetical still splits');
+});
+
 // ── Groundedness check ────────────────────────────────────────────────────
 await test('verifyGrounding: cited-and-matching → grounded; uncited → flagged', async () => {
   const items = [

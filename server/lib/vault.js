@@ -69,10 +69,85 @@ export async function verifyGrounding(bullets, items) {
   return out;
 }
 
+// The bullet glyphs real résumés actually use — PDFs and Word docs are full of
+// ● ▪ ◦ ‣ · and en/em dashes, not just the ASCII "- • *" the old regex knew. A
+// leading one (with following whitespace) marks a bullet line.
+const BULLET_CHARS = '-–—•●▪◦‣∙·*»›';
+const BULLET_RE = new RegExp(`^[${BULLET_CHARS}]\\s+`);
+const BULLET_ONLY_RE = new RegExp(`^[${BULLET_CHARS}]\\s*$`);
+
+// Canonical résumé sections. Maps the many ways a section gets labelled onto a
+// single key so the SKILLS / SUMMARY special-casing fires regardless of wording
+// or capitalization ("Technical Skills", "Professional Summary", "Objective").
+const SECTION_ALIASES = {
+  experience: 'EXPERIENCE',
+  'work experience': 'EXPERIENCE',
+  'professional experience': 'EXPERIENCE',
+  employment: 'EXPERIENCE',
+  'employment history': 'EXPERIENCE',
+  education: 'EDUCATION',
+  skills: 'SKILLS',
+  'technical skills': 'SKILLS',
+  'core skills': 'SKILLS',
+  technologies: 'SKILLS',
+  competencies: 'SKILLS',
+  projects: 'PROJECTS',
+  'personal projects': 'PROJECTS',
+  summary: 'SUMMARY',
+  'professional summary': 'SUMMARY',
+  objective: 'SUMMARY',
+};
+
+// Decide whether a line is a section header, and if so return its canonical key.
+// A line qualifies when it's a known section name (any case) OR a short ALL-CAPS
+// line (the original heuristic, for custom headers like "PATENTS"). Returns null
+// for ordinary content lines.
+function canonicalSection(line) {
+  const bare = line.replace(/:\s*$/, '').trim();
+  const key = bare.toLowerCase();
+  if (SECTION_ALIASES[key]) return SECTION_ALIASES[key];
+  const allCaps = bare.length <= 40 && /[A-Z]/.test(bare) && bare === bare.toUpperCase();
+  return allCaps ? bare : null;
+}
+
+// Fan a skills line out into individual skills. Drops a leading category label
+// ("Languages: Python, SQL" → Python, SQL) and splits on the usual separators —
+// but never on "/", so "S3/ECS" and "CI/CD" survive intact.
+// Split on any of `seps`, but only at the top level — separators inside (...)
+// or [...] are kept, so "AWS (S3, ECS, SageMaker)" stays a single skill.
+function splitTopLevel(str, seps) {
+  const out = [];
+  let buf = '';
+  let depth = 0;
+  for (const ch of str) {
+    if (ch === '(' || ch === '[') depth++;
+    else if (ch === ')' || ch === ']') depth = Math.max(0, depth - 1);
+    if (depth === 0 && seps.includes(ch)) {
+      out.push(buf);
+      buf = '';
+    } else {
+      buf += ch;
+    }
+  }
+  out.push(buf);
+  return out;
+}
+
+function splitSkills(line) {
+  // Strip a leading category label up to its colon ("ML / Modeling: PyTorch, …"
+  // → "PyTorch, …"). Matching only the prefix before ":" means the "/" allowed
+  // here can't affect values like "S3/ECS" further down the line.
+  const noLabel = line.replace(/^[A-Za-z][\w &/+.-]{0,30}:\s+/, '');
+  return splitTopLevel(noLabel, ',;·•|')
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 // Split a free-text base résumé/profile into atomic career items, à la the
 // Module 3 chunking pattern but résumé-aware: bullet lines become experience
 // items tagged with the role heading above them; the SKILLS list fans out into
-// one item per skill; SUMMARY lines become achievement items. Used by
+// one item per skill; SUMMARY lines become achievement items. Tolerant of the
+// bullet glyphs and heading styles real PDF/Word résumés use. Used by
 // POST /api/vault/build-from-profile so a user can seed their vault in one tap.
 export function chunkProfileIntoItems(profile) {
   const lines = String(profile || '').split('\n');
@@ -80,36 +155,34 @@ export function chunkProfileIntoItems(profile) {
   let section = '';
   let heading = '';
 
-  const isSectionHeader = (line) =>
-    line.length <= 40 && /[A-Z]/.test(line) && line === line.toUpperCase();
-
   for (const raw of lines) {
     const line = raw.trim();
     if (!line) continue;
+    // A stray bullet glyph on its own line (PDF layout artifact) isn't a heading.
+    if (BULLET_ONLY_RE.test(line)) continue;
 
-    if (isSectionHeader(line)) {
-      section = line;
+    const sec = canonicalSection(line);
+    if (sec) {
+      section = sec;
       heading = '';
       continue;
     }
 
-    const bullet = /^[-•*]\s+/.test(line);
-    if (bullet) {
-      const content = line.replace(/^[-•*]\s+/, '');
+    const isBullet = BULLET_RE.test(line);
+    const text = isBullet ? line.replace(BULLET_RE, '') : line;
+
+    if (section === 'SKILLS') {
+      // Skills — bulleted or comma-separated, with or without a category label.
+      splitSkills(text).forEach((skill) =>
+        items.push({ kind: 'skill', title: skill, content: skill, source: 'SKILLS' })
+      );
+    } else if (isBullet) {
       items.push({
         kind: 'experience',
         title: heading || section || 'Experience',
-        content,
+        content: text,
         source: heading || section || 'profile',
       });
-    } else if (section === 'SKILLS') {
-      line
-        .split(/[,·]/)
-        .map((s) => s.trim())
-        .filter(Boolean)
-        .forEach((skill) =>
-          items.push({ kind: 'skill', title: skill, content: skill, source: 'SKILLS' })
-        );
     } else if (section === 'SUMMARY') {
       items.push({ kind: 'achievement', title: 'Summary', content: line, source: 'SUMMARY' });
     } else {

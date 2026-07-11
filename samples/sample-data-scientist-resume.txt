@@ -64,10 +64,7 @@ LLM Resume Grounding  (side project, 2024)
 
 
 SKILLS
-Languages:      Python, SQL, R, a little Go
-ML / Modeling:  PyTorch, scikit-learn, LightGBM/XGBoost, statsmodels,
-                Hugging Face Transformers, time-series forecasting, A/B testing
-Data / Infra:   pandas, Spark, dbt, Airflow, PostgreSQL, Snowflake, feature
-                stores, Docker, AWS (S3, ECS, SageMaker)
-Practice:       experimental design, causal inference basics, model monitoring,
-                data visualization (Plotly, matplotlib), clear technical writing
+Languages: Python, SQL, R, a little Go
+ML / Modeling: PyTorch, scikit-learn, LightGBM/XGBoost, statsmodels, Hugging Face Transformers, time-series forecasting, A/B testing
+Data / Infra: pandas, Spark, dbt, Airflow, PostgreSQL, Snowflake, feature stores, Docker, AWS (S3, ECS, SageMaker)
+Practice: experimental design, causal inference basics, model monitoring, data visualization (Plotly, matplotlib), clear technical writing
