@@ -109,6 +109,29 @@ fly deploy \
 # VITE_API_BASE_URL defaults to "/api" (same origin) — no need to pass it.
 ```
 
+## Step 5b — Enable Google sign-in (Supabase + Google Cloud)
+
+The app shows a "Continue with Google" button on the login/signup pages. It only
+works once you enable the Google provider — this is dashboard config (it involves
+creating OAuth credentials, so it's yours to do, not something the app can set):
+
+1. **Google Cloud Console** → APIs & Services → Credentials → *Create OAuth client
+   ID* → **Web application**. Under *Authorized redirect URIs* add your Supabase
+   callback: `https://<ref>.supabase.co/auth/v1/callback`. Copy the generated
+   **Client ID** and **Client secret**.
+2. **Supabase** → Authentication → Providers → **Google** → enable, paste the
+   Client ID + secret, save.
+3. **Supabase** → Authentication → URL Configuration → add your app origins to
+   **Redirect URLs**: `https://<your-app>.fly.dev/**` and, for local dev,
+   `http://localhost:5173/**`. Set **Site URL** to your Fly URL.
+
+New Google users land in the app with an empty profile; the Career Vault
+auto-seeds on their first profile save, so nothing else is needed per user.
+
+> No shared demo password: the app has no committed credentials. If you want a
+> preloaded demo account, seed one with your own `DEMO_PASSWORD` (see Step 2);
+> otherwise everyone just signs up.
+
 ## Step 6 — Verify
 
 ```bash

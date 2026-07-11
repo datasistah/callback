@@ -88,15 +88,16 @@ The four Supabase values come from your project's **Settings → API** (Project 
 # from server/
 npm install
 npm run migrate   # applies migrations/ (career_items + pgvector, interview, jobs)
-npm run seed      # creates the demo user + Maya Rivera's base profile & vault
+
+# Optional: seed Maya Rivera's demo account (profile + vault). Choose the
+# password via DEMO_PASSWORD — nothing is hardcoded. Skip this entirely if you
+# just want to sign up fresh.
+DEMO_PASSWORD='choose-your-own' npm run seed
 ```
 
-`seed.js` prints the demo login on completion:
-
-```
-Email:    maya.rivera@example.com
-Password: JobTailor2026!
-```
+`seed.js` prints the demo email on completion, and the password only when it
+creates the account (from `DEMO_PASSWORD`, or a random one it generates and
+prints once). Or just **sign up** in the app — with Google or your own email.
 
 ### 4. Run it
 
@@ -111,7 +112,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173), click **Log in**, and use the demo credentials. Vite only exposes `VITE_`-prefixed env vars to the browser, which is why the client needs its own `.env`.
+Open [http://localhost:5173](http://localhost:5173) and **sign up** — with Google or your own email — or log in with the demo account if you seeded one. Vite only exposes `VITE_`-prefixed env vars to the browser, which is why the client needs its own `.env`.
 
 ---
 

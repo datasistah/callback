@@ -43,6 +43,19 @@ export function SessionProvider({ children }) {
     return { data, error }
   }
 
+  // OAuth sign-in (Google). This redirects the browser to Google and back to
+  // redirectTo, where supabase-js (detectSessionInUrl) completes the session and
+  // onAuthStateChange above picks it up — so there's no local navigation to do
+  // on success. Returns an error only if the redirect couldn't be initiated
+  // (e.g. the provider isn't enabled in Supabase).
+  const signInWithGoogle = async () => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/app/board` },
+    })
+    return { data, error }
+  }
+
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
     return { error }
@@ -55,6 +68,7 @@ export function SessionProvider({ children }) {
     loading,
     signUp,
     signIn,
+    signInWithGoogle,
     signOut,
   }
 

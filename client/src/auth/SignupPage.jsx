@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useSession } from './SessionProvider.jsx'
 import AuthShell from './AuthShell.jsx'
 import ErrorBanner from '../components/ErrorBanner.jsx'
+import GoogleSignInButton from './GoogleSignInButton.jsx'
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -54,10 +55,18 @@ export default function SignupPage() {
       title="Create your Callback account"
       subtitle="Tailor every application and score the fit before you apply."
     >
-      <form onSubmit={handleSubmit} noValidate className="space-y-4">
-        <ErrorBanner message={serverError} />
-        <ErrorBanner message={notice} tone="info" />
+      <ErrorBanner message={serverError} />
+      <ErrorBanner message={notice} tone="info" />
 
+      <GoogleSignInButton label="Sign up with Google" onError={setServerError} />
+
+      <div className="my-5 flex items-center gap-3 text-xs text-muted">
+        <span className="h-px flex-1 bg-border" />
+        or with email
+        <span className="h-px flex-1 bg-border" />
+      </div>
+
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
         <div>
           <label
             htmlFor="email"

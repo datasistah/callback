@@ -6,14 +6,20 @@
 //    data/AI-field sample data scoped to that user.
 // 3. Idempotent: reuses the demo user if present, and clears the user's seed
 //    rows before re-inserting, so running it twice never errors.
-// 4. Prints the demo user's email + password to stdout on completion.
+// 4. Prints the demo user's login to stdout — but only shows a password when it
+//    just created the user, so no credential is ever hardcoded here.
 import './lib/loadEnv.js';
+import crypto from 'node:crypto';
 import { migrate } from './migrate.js';
 import { adminClient } from './supabase.js';
 import { embedItem } from './lib/vault.js';
 
-const DEMO_EMAIL = 'maya.rivera@example.com';
-const DEMO_PASSWORD = 'JobTailor2026!';
+const DEMO_EMAIL = process.env.DEMO_EMAIL || 'maya.rivera@example.com';
+// No password is committed. Use DEMO_PASSWORD from the environment if set,
+// otherwise generate a strong random one for this run (printed once below when
+// the user is newly created). Classmates are expected to sign up themselves —
+// with Google or their own email — rather than share a demo login.
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD || crypto.randomBytes(12).toString('base64url');
 
 const BASE_PROFILE = `MAYA RIVERA — Senior Machine Learning Engineer
 San Francisco, CA · maya.rivera@example.com
@@ -126,9 +132,11 @@ async function run() {
 
   // 1. Demo user — reuse if present (idempotent).
   let user = await findUserByEmail(admin, DEMO_EMAIL);
+  let created = false;
   if (user) {
     console.log(`Demo user already exists (${DEMO_EMAIL}); reusing.`);
   } else {
+    created = true;
     const { data, error } = await admin.auth.admin.createUser({
       email: DEMO_EMAIL,
       password: DEMO_PASSWORD,
@@ -175,7 +183,15 @@ async function run() {
   console.log('');
   console.log('=== Demo login ===');
   console.log(`Email:    ${DEMO_EMAIL}`);
-  console.log(`Password: ${DEMO_PASSWORD}`);
+  if (created) {
+    // Only meaningful for the account we just created with this run's password.
+    console.log(`Password: ${DEMO_PASSWORD}`);
+    if (!process.env.DEMO_PASSWORD) {
+      console.log('(randomly generated for this run — set DEMO_PASSWORD to choose your own)');
+    }
+  } else {
+    console.log('Password: unchanged (set DEMO_PASSWORD before first creation, or sign in with Google).');
+  }
   console.log('==================');
 }
 

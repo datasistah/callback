@@ -23,9 +23,11 @@ const API = 'http://localhost:3001/api';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
 
-// Seeded demo credentials (see server/seed.js).
-const DEMO_EMAIL = 'maya.rivera@example.com';
-const DEMO_PASSWORD = 'JobTailor2026!';
+// Seeded demo credentials (see server/seed.js). No password is committed — set
+// DEMO_PASSWORD (and optionally DEMO_EMAIL) in the environment to the values you
+// seeded with. When unset, the authenticated suite below simply skips.
+const DEMO_EMAIL = process.env.DEMO_EMAIL || 'maya.rivera@example.com';
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD || '';
 
 let pass = 0;
 let fail = 0;

@@ -285,7 +285,7 @@ bite, switch to Claude Haiku 4.5 (`ANTHROPIC_API_KEY` + `CALLBACK_LLM_PROVIDER=a
 
 ## Guardrails (don't break)
 
-- Never commit `.env`/secrets.
-- Demo login stays `maya.rivera@example.com` / `JobTailor2026!` (changing the demo password
-  breaks the existing Supabase auth user without a re-seed).
+- Never commit `.env`/secrets — including any demo password. The demo account's
+  password is supplied at seed time via `DEMO_PASSWORD`, never hardcoded; users
+  sign up themselves (Google or email).
 - No `Co-Authored-By: Claude` / "Generated with Claude Code" trailers in commits or PRs.
