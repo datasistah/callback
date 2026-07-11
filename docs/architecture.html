@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Callback — System Architecture</title>
+<style>
+  /* ============ THEME TOKENS ============ */
+  :root {
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, monospace;
+
+    /* Layer accent hues (shared across themes, tuned per theme below) */
+    --c-client: #38bdf8;   /* sky   */
+    --c-api:    #a78bfa;   /* violet*/
+    --c-agent:  #fb923c;   /* orange (the star) */
+    --c-router: #34d399;   /* emerald */
+    --c-embed:  #f472b6;   /* pink  */
+    --c-data:   #facc15;   /* amber */
+    --c-free:   #22c55e;   /* free / deterministic floor */
+    --c-paid:   #f59e0b;   /* paid / hosted */
+  }
+
+  html[data-theme="dark"] {
+    --bg:        #0b1120;
+    --bg-grad-1: #0e1a33;
+    --bg-grad-2: #0b1120;
+    --surface:   #131c31;
+    --surface-2: #1b2740;
+    --border:    #263251;
+    --text:      #e8edf7;
+    --text-dim:  #93a1bd;
+    --text-mut:  #64748b;
+    --badge-bg:  #1b2740;
+    --shadow:    0 10px 30px rgba(0,0,0,.45);
+    --grid:      rgba(255,255,255,.03);
+    --arrow:     #7dd3fc;
+  }
+
+  html[data-theme="light"] {
+    --bg:        #eef2f9;
+    --bg-grad-1: #f7f9fd;
+    --bg-grad-2: #e6ecf6;
+    --surface:   #ffffff;
+    --surface-2: #f2f6fc;
+    --border:    #d4deee;
+    --text:      #16233b;
+    --text-dim:  #4a5a76;
+    --text-mut:  #7688a3;
+    --badge-bg:  #eef3fb;
+    --shadow:    0 8px 24px rgba(30,50,90,.12);
+    --grid:      rgba(20,40,80,.035);
+    --arrow:     #0284c7;
+
+    --c-client: #0284c7;
+    --c-api:    #7c3aed;
+    --c-agent:  #ea580c;
+    --c-router: #059669;
+    --c-embed:  #db2777;
+    --c-data:   #ca8a04;
+    --c-free:   #16a34a;
+    --c-paid:   #d97706;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    color: var(--text);
+    background:
+      radial-gradient(1200px 600px at 15% -5%, var(--bg-grad-1), transparent 60%),
+      radial-gradient(1000px 700px at 110% 10%, var(--bg-grad-1), transparent 55%),
+      var(--bg);
+    background-attachment: fixed;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color .3s ease, color .3s ease;
+  }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 32px 28px 64px; }
+
+  /* ============ HEADER ============ */
+  header.top {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 24px; flex-wrap: wrap; margin-bottom: 22px;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .logo {
+    width: 52px; height: 52px; border-radius: 14px; flex: none;
+    background: linear-gradient(135deg, var(--c-agent), var(--c-embed));
+    display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 24px;
+    box-shadow: var(--shadow);
+    font-family: var(--mono);
+  }
+  h1 { font-size: 26px; margin: 0; letter-spacing: -.4px; }
+  .sub { color: var(--text-dim); font-size: 13.5px; margin-top: 3px; }
+  .sub b { color: var(--text); font-weight: 600; }
+
+  .toggle {
+    display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    background: var(--surface); border: 1px solid var(--border);
+    color: var(--text-dim); border-radius: 999px; padding: 8px 14px;
+    font-size: 13px; font-weight: 600; user-select: none;
+    box-shadow: var(--shadow); transition: all .2s;
+  }
+  .toggle:hover { color: var(--text); border-color: var(--c-client); }
+
+  /* ============ LEGEND ============ */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 18px 26px; align-items: center;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px 20px; margin-bottom: 26px;
+    box-shadow: var(--shadow);
+  }
+  .legend .grp { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--text-dim); }
+  .swatch { width: 13px; height: 13px; border-radius: 4px; flex: none; }
+  .legend .sep { width: 1px; height: 22px; background: var(--border); }
+  .legend .path { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+  .pill-line { width: 26px; height: 4px; border-radius: 3px; }
+  .pill-line.free { background: var(--c-free); }
+  .pill-line.paid { background: var(--c-paid); }
+  .pill-line.dashed {
+    height: 0; border-top: 3px dashed var(--c-agent); width: 28px;
+  }
+
+  /* ============ LAYER STACK ============ */
+  .stack { display: flex; flex-direction: column; gap: 0; }
+
+  .layer {
+    position: relative;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--accent, var(--c-client));
+    border-radius: 16px;
+    padding: 18px 22px 20px;
+    box-shadow: var(--shadow);
+  }
+  .layer-tag {
+    position: absolute; top: -11px; left: 20px;
+    background: var(--accent); color: #0b1120;
+    font-size: 10.5px; font-weight: 800; letter-spacing: .6px;
+    padding: 3px 10px; border-radius: 999px; text-transform: uppercase;
+  }
+  html[data-theme="light"] .layer-tag { color: #fff; }
+
+  .layer-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
+  .layer-head h2 { font-size: 17px; margin: 0; letter-spacing: -.2px; }
+  .layer-head .meta { font-size: 12.5px; color: var(--text-mut); font-family: var(--mono); }
+
+  /* connector between layers */
+  .connector {
+    align-self: center; display: flex; flex-direction: column; align-items: center;
+    color: var(--arrow); padding: 4px 0; gap: 1px;
+  }
+  .connector .lbl {
+    font-size: 10.5px; color: var(--text-mut); font-family: var(--mono);
+    margin-bottom: 2px; letter-spacing: .3px;
+  }
+  .connector svg { display: block; }
+
+  /* card rows inside layers */
+  .cards { display: flex; gap: 12px; flex-wrap: wrap; }
+  .card {
+    flex: 1 1 200px; min-width: 180px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 11px; padding: 12px 14px;
+  }
+  .card h3 { margin: 0 0 6px; font-size: 13.5px; display: flex; align-items: center; gap: 7px; }
+  .card p { margin: 0; font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+  .card .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+  code {
+    font-family: var(--mono); font-size: 11.5px;
+    background: var(--badge-bg); border: 1px solid var(--border);
+    padding: 1px 6px; border-radius: 5px; color: var(--text);
+  }
+
+  /* ============ AGENT HARNESS (STAR) ============ */
+  .layer.star {
+    border: 1.5px solid var(--c-agent);
+    border-left: 5px solid var(--c-agent);
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--c-agent) 9%, var(--surface)), var(--surface));
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--c-agent) 25%, transparent), var(--shadow);
+  }
+  .star-badge {
+    position: absolute; top: -11px; right: 18px;
+    background: var(--c-agent); color: #fff;
+    font-size: 10px; font-weight: 800; letter-spacing: .5px;
+    padding: 3px 10px; border-radius: 999px; text-transform: uppercase;
+    display: flex; align-items: center; gap: 5px;
+  }
+
+  /* ReAct loop visual */
+  .react {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    flex-wrap: wrap; margin: 6px 0 16px; padding: 14px;
+    background: var(--surface-2); border: 1px dashed var(--c-agent); border-radius: 12px;
+  }
+  .react .node {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 9px; padding: 8px 14px; font-size: 12.5px; font-weight: 700;
+    display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 92px;
+  }
+  .react .node small { font-weight: 500; font-size: 10px; color: var(--text-mut); font-family: var(--mono); }
+  .react .node.reason { border-color: var(--c-api); }
+  .react .node.act    { border-color: var(--c-agent); }
+  .react .node.obs    { border-color: var(--c-router); }
+  .react .node.final  { border-color: var(--c-free); background: color-mix(in srgb, var(--c-free) 12%, var(--surface)); }
+  .react .arw { color: var(--c-agent); font-size: 18px; font-weight: 700; }
+  .react .loopback {
+    width: 100%; text-align: center; font-size: 11px; color: var(--c-agent);
+    font-family: var(--mono); margin-top: 4px; opacity: .9;
+  }
+  .react .emit {
+    width: 100%; text-align: center; font-size: 11px; color: var(--text-dim);
+    font-family: var(--mono); margin-bottom: 2px;
+  }
+
+  /* ============ LLM ROUTER FALLBACK CHAIN ============ */
+  .chain { display: flex; align-items: stretch; gap: 0; flex-wrap: wrap; }
+  .prov {
+    flex: 1 1 150px; min-width: 140px; position: relative;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 11px; padding: 12px 14px; margin-right: 26px;
+  }
+  .prov:last-child { margin-right: 0; }
+  .prov .rank { font-size: 10px; font-family: var(--mono); color: var(--text-mut); }
+  .prov h3 { margin: 3px 0 5px; font-size: 13.5px; }
+  .prov p { margin: 0; font-size: 11.5px; color: var(--text-dim); line-height: 1.45; }
+  .prov .tier {
+    display: inline-block; font-size: 9.5px; font-weight: 800; letter-spacing: .4px;
+    text-transform: uppercase; padding: 2px 7px; border-radius: 999px; margin-bottom: 6px;
+  }
+  .prov.paid { border-top: 3px solid var(--c-paid); }
+  .prov.paid .tier { background: color-mix(in srgb, var(--c-paid) 20%, transparent); color: var(--c-paid); }
+  .prov.local { border-top: 3px solid var(--c-embed); }
+  .prov.local .tier { background: color-mix(in srgb, var(--c-embed) 20%, transparent); color: var(--c-embed); }
+  .prov.free { border-top: 3px solid var(--c-free); background: color-mix(in srgb, var(--c-free) 8%, var(--surface-2)); }
+  .prov.free .tier { background: color-mix(in srgb, var(--c-free) 22%, transparent); color: var(--c-free); }
+  /* fallback arrow between providers */
+  .prov:not(:last-child)::after {
+    content: "▶"; position: absolute; right: -20px; top: 50%; transform: translateY(-50%);
+    color: var(--c-paid); font-size: 13px;
+  }
+  .prov.free { }
+  .chain-note { font-size: 11.5px; color: var(--text-mut); font-family: var(--mono); margin-top: 10px; }
+  .floor-flag {
+    margin-top: 4px; font-size: 11px; color: var(--c-free); font-weight: 700;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+
+  /* fallback callouts in agent harness */
+  .fallbacks { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+  .fb {
+    flex: 1 1 200px; min-width: 190px;
+    border: 1px solid var(--border); border-left: 4px solid var(--c-free);
+    border-radius: 10px; padding: 10px 13px; background: var(--surface-2);
+  }
+  .fb h4 { margin: 0 0 4px; font-size: 12px; display: flex; align-items: center; gap: 7px; color: var(--c-free); }
+  .fb p { margin: 0; font-size: 11.5px; color: var(--text-dim); line-height: 1.45; }
+  .fb .fnum {
+    width: 17px; height: 17px; border-radius: 50%; background: var(--c-free); color: #05230f;
+    font-size: 10px; font-weight: 800; display: grid; place-items: center; flex: none;
+  }
+  html[data-theme="light"] .fb .fnum { color: #fff; }
+
+  /* ============ AGENTIC FLOW TRACE ============ */
+  .flow-section {
+    margin: 30px 0 8px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px 22px; box-shadow: var(--shadow);
+    border-top: 4px solid var(--c-agent);
+  }
+  .flow-section > h2 { margin: 0 0 4px; font-size: 17px; }
+  .flow-section > .sub { margin-bottom: 16px; }
+  .flow {
+    display: flex; align-items: stretch; gap: 0; flex-wrap: wrap;
+    counter-reset: step;
+  }
+  .fstep {
+    position: relative; flex: 1 1 140px; min-width: 130px; margin-right: 30px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px;
+    padding: 12px 13px 13px; display: flex; flex-direction: column; gap: 5px;
+  }
+  .fstep:last-child { margin-right: 0; }
+  .fstep::before {
+    counter-increment: step; content: counter(step);
+    position: absolute; top: -10px; left: 11px;
+    width: 21px; height: 21px; border-radius: 50%;
+    background: var(--c-agent); color: #fff; font-size: 11px; font-weight: 800;
+    display: grid; place-items: center;
+  }
+  .fstep:not(:last-child)::after {
+    content: "→"; position: absolute; right: -22px; top: 50%; transform: translateY(-50%);
+    color: var(--arrow); font-size: 20px; font-weight: 700;
+  }
+  .fstep .who { font-size: 10px; font-family: var(--mono); color: var(--text-mut); text-transform: uppercase; letter-spacing: .4px; }
+  .fstep .what { font-size: 12.5px; font-weight: 700; }
+  .fstep .det { font-size: 11px; color: var(--text-dim); line-height: 1.4; }
+  .fstep.terminal { border-color: var(--c-free); background: color-mix(in srgb, var(--c-free) 10%, var(--surface-2)); }
+  .fstep.terminal::before { background: var(--c-free); }
+  html[data-theme="light"] .fstep.terminal::before { color:#fff; }
+  .ret {
+    margin-top: 14px; font-family: var(--mono); font-size: 12px;
+    background: var(--badge-bg); border: 1px solid var(--border); border-radius: 9px;
+    padding: 10px 14px; color: var(--text); overflow-x: auto;
+  }
+  .ret .k { color: var(--c-agent); }
+  .ret .v { color: var(--c-router); }
+
+  /* ============ TECH BADGES ============ */
+  .tech {
+    margin-top: 28px; background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 16px 20px; box-shadow: var(--shadow);
+  }
+  .tech h2 { font-size: 13px; margin: 0 0 12px; text-transform: uppercase; letter-spacing: .6px; color: var(--text-dim); }
+  .badges { display: flex; flex-wrap: wrap; gap: 9px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 7px;
+    background: var(--badge-bg); border: 1px solid var(--border);
+    border-radius: 999px; padding: 6px 13px; font-size: 12.5px; font-weight: 600;
+  }
+  .badge .bd { width: 8px; height: 8px; border-radius: 50%; }
+
+  footer.foot {
+    margin-top: 26px; text-align: center; color: var(--text-mut); font-size: 11.5px;
+  }
+
+  @media (max-width: 720px) {
+    .prov, .fstep { margin-right: 0; margin-bottom: 22px; }
+    .prov:not(:last-child)::after, .fstep:not(:last-child)::after { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <header class="top">
+    <div class="brand">
+      <div class="logo">C</div>
+      <div>
+        <h1>Callback — System Architecture</h1>
+        <div class="sub">Interview-prep &amp; resume-rewriter · <b>agentic RAG</b> over your Career Vault · layered top&nbsp;→&nbsp;bottom</div>
+      </div>
+    </div>
+    <div class="toggle" id="themeToggle" role="button" tabindex="0">
+      <span id="themeIcon">☾</span><span id="themeLabel">Dark</span>
+    </div>
+  </header>
+
+  <!-- LEGEND -->
+  <div class="legend">
+    <div class="grp"><span class="swatch" style="background:var(--c-client)"></span>Client</div>
+    <div class="grp"><span class="swatch" style="background:var(--c-api)"></span>API</div>
+    <div class="grp"><span class="swatch" style="background:var(--c-agent)"></span>Agent Harness</div>
+    <div class="grp"><span class="swatch" style="background:var(--c-router)"></span>LLM Router</div>
+    <div class="grp"><span class="swatch" style="background:var(--c-embed)"></span>Embeddings</div>
+    <div class="grp"><span class="swatch" style="background:var(--c-data)"></span>Data</div>
+    <div class="sep"></div>
+    <div class="path"><span class="pill-line paid"></span>Paid / hosted path</div>
+    <div class="path"><span class="pill-line free"></span>Free / deterministic floor</div>
+    <div class="path"><span class="pill-line dashed"></span>Fallback path</div>
+  </div>
+
+  <!-- LAYER STACK -->
+  <div class="stack">
+
+    <!-- 1. CLIENT -->
+    <div class="layer" style="--accent:var(--c-client)">
+      <div class="layer-tag">Layer 1 · Client</div>
+      <div class="layer-head">
+        <h2>React + Vite SPA</h2>
+        <span class="meta">browser · single-page app</span>
+      </div>
+      <div class="cards">
+        <div class="card"><h3><span class="dot"></span>UI</h3><p>React components served by <b>Vite</b>. Interview-prep &amp; resume-rewriter views.</p></div>
+        <div class="card"><h3><span class="dot"></span>Auth</h3><p>Signs in via <b>Supabase</b>; attaches <code>Supabase JWT</code> as a Bearer token on every API call.</p></div>
+        <div class="card"><h3><span class="dot"></span>Requests</h3><p>Calls <code>/api/*</code> — asks for interview questions, previews, and Career Vault edits.</p></div>
+      </div>
+    </div>
+
+    <div class="connector">
+      <span class="lbl">HTTPS · Bearer JWT</span>
+      <svg width="22" height="30" viewBox="0 0 22 30"><line x1="11" y1="0" x2="11" y2="22" stroke="currentColor" stroke-width="2"/><path d="M11 30 L4 20 L18 20 Z" fill="currentColor"/></svg>
+    </div>
+
+    <!-- 2. API -->
+    <div class="layer" style="--accent:var(--c-api)">
+      <div class="layer-tag">Layer 2 · API</div>
+      <div class="layer-head">
+        <h2>Express Server</h2>
+        <span class="meta">Node.js · ESM · every route requireAuth</span>
+      </div>
+      <div class="cards">
+        <div class="card"><h3><span class="dot"></span>/api/interview</h3><p><code>GET/POST/DELETE /sessions</code> · <code>POST /preview</code>. Entry point for the agent.</p></div>
+        <div class="card"><h3><span class="dot"></span>/api/llm/status</h3><p>Reports which providers are live &amp; the active fallback tier.</p></div>
+        <div class="card"><h3><span class="dot"></span>Career Vault CRUD</h3><p>Create / read / update / delete <code>career_items</code> — the grounding source.</p></div>
+        <div class="card"><h3><span class="dot"></span>requireAuth</h3><p>Middleware verifies the Supabase JWT on <b>all</b> routes before anything runs.</p></div>
+      </div>
+    </div>
+
+    <div class="connector">
+      <span class="lbl">invoke agent</span>
+      <svg width="22" height="30" viewBox="0 0 22 30"><line x1="11" y1="0" x2="11" y2="22" stroke="currentColor" stroke-width="2"/><path d="M11 30 L4 20 L18 20 Z" fill="currentColor"/></svg>
+    </div>
+
+    <!-- 3. AGENT HARNESS — THE STAR -->
+    <div class="layer star" style="--accent:var(--c-agent)">
+      <div class="layer-tag" style="background:var(--c-agent)">Layer 3 · Agent Harness</div>
+      <div class="star-badge">★ the star</div>
+      <div class="layer-head">
+        <h2>ReAct Agent</h2>
+        <span class="meta">provider-agnostic · plain-JSON tool calls · no native tool-calling</span>
+      </div>
+
+      <!-- ReAct loop -->
+      <div class="react">
+        <div class="emit">model emits <code>{ thought, tool, args }</code> &nbsp;or&nbsp; <code>{ thought, final }</code></div>
+        <div class="node reason">Reason<small>thought</small></div>
+        <span class="arw">→</span>
+        <div class="node act">Act<small>tool + args</small></div>
+        <span class="arw">→</span>
+        <div class="node obs">Observe<small>tool result</small></div>
+        <span class="arw">→</span>
+        <div class="node final">Final<small>answer</small></div>
+        <div class="loopback">↺ loop Reason → Act → Observe until <code>final</code> (bounded by max-steps)</div>
+      </div>
+
+      <!-- tool registry + fallbacks -->
+      <div class="cards">
+        <div class="card" style="--accent:var(--c-agent)"><h3><span class="dot"></span>Tool Registry</h3>
+          <p><code>vault_search</code> — retrieve grounding items.<br><code>question_gen</code> — draft questions. Both are <b>schema-validated</b> in &amp; out.</p></div>
+        <div class="card" style="--accent:var(--c-agent)"><h3><span class="dot"></span>Hardened Parser</h3>
+          <p>Tolerant JSON extraction from model text — survives fences, prose, and partial output.</p></div>
+      </div>
+
+      <div class="fallbacks">
+        <div class="fb"><h4><span class="fnum">1</span>Provider error</h4><p>LLM call fails → fall back to <b>deterministic questions</b> (no model needed).</p></div>
+        <div class="fb"><h4><span class="fnum">2</span>Max-steps hit</h4><p>Loop exceeds step budget → <b>recover the trace</b> &amp; return best-effort result.</p></div>
+        <div class="fb"><h4><span class="fnum">3</span>Malformed output</h4><p>Unparseable JSON → <b>hardened parser</b> repairs / re-prompts before failing.</p></div>
+      </div>
+    </div>
+
+    <div class="connector">
+      <span class="lbl">per-task route</span>
+      <svg width="22" height="30" viewBox="0 0 22 30"><line x1="11" y1="0" x2="11" y2="22" stroke="currentColor" stroke-width="2"/><path d="M11 30 L4 20 L18 20 Z" fill="currentColor"/></svg>
+    </div>
+
+    <!-- 4. LLM ROUTER -->
+    <div class="layer" style="--accent:var(--c-router)">
+      <div class="layer-tag">Layer 4 · LLM Router</div>
+      <div class="layer-head">
+        <h2>Per-task Provider Routing</h2>
+        <span class="meta">fallback chain · never dead-ends</span>
+      </div>
+      <div class="chain">
+        <div class="prov paid">
+          <span class="tier">Paid · hosted</span>
+          <span class="rank">1st choice</span>
+          <h3>OpenRouter</h3>
+          <p>Deploy default: <code>llama-3.3-70b-instruct</code></p>
+        </div>
+        <div class="prov local">
+          <span class="tier">Local only</span>
+          <span class="rank">dev</span>
+          <h3>Ollama</h3>
+          <p>Runs models on the developer's machine — never in deploy.</p>
+        </div>
+        <div class="prov paid">
+          <span class="tier">Paid · hosted</span>
+          <span class="rank">alt</span>
+          <h3>Anthropic</h3>
+          <p>Alternate hosted provider for reasoning tasks.</p>
+        </div>
+        <div class="prov free">
+          <span class="tier">Free floor</span>
+          <span class="rank">always available</span>
+          <h3>Deterministic Mock</h3>
+          <p>Guaranteed-free floor — the chain <b>always</b> resolves here.</p>
+          <div class="floor-flag">◆ can never fail</div>
+        </div>
+      </div>
+      <div class="chain-note">Fallback chain: OpenRouter ▶ Ollama ▶ Anthropic ▶ Deterministic Mock &nbsp;— demo-safe by construction.</div>
+    </div>
+
+    <div class="connector">
+      <span class="lbl">embed text · 768-dim</span>
+      <svg width="22" height="30" viewBox="0 0 22 30"><line x1="11" y1="0" x2="11" y2="22" stroke="currentColor" stroke-width="2"/><path d="M11 30 L4 20 L18 20 Z" fill="currentColor"/></svg>
+    </div>
+
+    <!-- 5. EMBEDDINGS -->
+    <div class="layer" style="--accent:var(--c-embed)">
+      <div class="layer-tag">Layer 5 · Embeddings</div>
+      <div class="layer-head">
+        <h2>768-dim Vectors</h2>
+        <span class="meta">rule: seed &amp; serve with the same embedder</span>
+      </div>
+      <div class="cards">
+        <div class="card free-card" style="--accent:var(--c-free); border-left:4px solid var(--c-free)">
+          <h3><span class="dot" style="background:var(--c-free)"></span>Deterministic signed-hash <span style="font-weight:600;color:var(--c-free)">· deploy</span></h3>
+          <p>Signed-hash embedder → <b>768-dim</b> vectors. Free, reproducible, no external model.</p></div>
+        <div class="card" style="--accent:var(--c-embed); border-left:4px solid var(--c-embed)">
+          <h3><span class="dot"></span>Ollama <code>nomic-embed-text</code> <span style="font-weight:600;color:var(--c-embed)">· local</span></h3>
+          <p>Local-only embedder → <b>768-dim</b> vectors for development.</p></div>
+      </div>
+      <div class="chain-note">⚠ Whichever embedder <b>seeds</b> the vault must also <b>serve</b> queries — mixing them breaks similarity.</div>
+    </div>
+
+    <div class="connector">
+      <span class="lbl">store / query vectors</span>
+      <svg width="22" height="30" viewBox="0 0 22 30"><line x1="11" y1="0" x2="11" y2="22" stroke="currentColor" stroke-width="2"/><path d="M11 30 L4 20 L18 20 Z" fill="currentColor"/></svg>
+    </div>
+
+    <!-- 6. DATA -->
+    <div class="layer" style="--accent:var(--c-data)">
+      <div class="layer-tag">Layer 6 · Data</div>
+      <div class="layer-head">
+        <h2>Supabase Postgres + pgvector</h2>
+        <span class="meta">the Career Vault store</span>
+      </div>
+      <div class="cards">
+        <div class="card"><h3><span class="dot"></span>career_items</h3><p>Vault rows with a <b>768-d</b> <code>embedding</code> column.</p></div>
+        <div class="card"><h3><span class="dot"></span>HNSW index</h3><p>Approximate-nearest-neighbour index over the embedding column for fast similarity.</p></div>
+        <div class="card"><h3><span class="dot"></span>match_career_items</h3><p>RPC returning top-k similar vault items by vector distance.</p></div>
+        <div class="card"><h3><span class="dot"></span>RLS</h3><p>Row-Level Security scopes every row <b>per user</b> — no cross-tenant leakage.</p></div>
+      </div>
+    </div>
+
+  </div><!-- /stack -->
+
+  <!-- AGENTIC FLOW TRACE -->
+  <div class="flow-section">
+    <h2>Agentic Flow — tracing one request</h2>
+    <div class="sub">“Give me interview questions” → grounded, retrieval-augmented generation through the ReAct loop</div>
+    <div class="flow">
+      <div class="fstep">
+        <span class="who">Client → API</span>
+        <span class="what">User requests questions</span>
+        <span class="det"><code>POST /api/interview</code> with the target role / context.</span>
+      </div>
+      <div class="fstep">
+        <span class="who">Agent Harness</span>
+        <span class="what">ReAct loop starts</span>
+        <span class="det">Reason → decides to gather grounding first.</span>
+      </div>
+      <div class="fstep">
+        <span class="who">Tool · Data</span>
+        <span class="what">vault_search</span>
+        <span class="det">pgvector similarity via <code>match_career_items</code> → top-k items.</span>
+      </div>
+      <div class="fstep">
+        <span class="who">Tool · LLM</span>
+        <span class="what">question_gen</span>
+        <span class="det">LLM drafts questions <b>grounded</b> in the retrieved vault items.</span>
+      </div>
+      <div class="fstep">
+        <span class="who">Agent Harness</span>
+        <span class="what">Observe</span>
+        <span class="det">Validates tool output; loops again or proceeds.</span>
+      </div>
+      <div class="fstep terminal">
+        <span class="who">Agent → API → Client</span>
+        <span class="what">Final</span>
+        <span class="det">Emits <code>{ final }</code> → returns the response.</span>
+      </div>
+    </div>
+    <div class="ret"><span class="k">return</span> { <span class="k">mode</span>: <span class="v">"agentic"</span>, <span class="k">questions</span>: <span class="v">[ … ]</span> }</div>
+  </div>
+
+  <!-- TECH BADGES -->
+  <div class="tech">
+    <h2>Tech Stack</h2>
+    <div class="badges">
+      <span class="badge"><span class="bd" style="background:var(--c-client)"></span>React</span>
+      <span class="badge"><span class="bd" style="background:var(--c-client)"></span>Vite</span>
+      <span class="badge"><span class="bd" style="background:var(--c-api)"></span>Express</span>
+      <span class="badge"><span class="bd" style="background:var(--c-api)"></span>Node ESM</span>
+      <span class="badge"><span class="bd" style="background:var(--c-data)"></span>Supabase</span>
+      <span class="badge"><span class="bd" style="background:var(--c-data)"></span>pgvector</span>
+      <span class="badge"><span class="bd" style="background:var(--c-paid)"></span>OpenRouter</span>
+      <span class="badge"><span class="bd" style="background:var(--c-embed)"></span>Ollama (local)</span>
+      <span class="badge"><span class="bd" style="background:var(--c-agent)"></span>ReAct pattern</span>
+    </div>
+  </div>
+
+  <footer class="foot">Callback architecture · free/deterministic floor keeps every path demo-safe · toggle theme, top-right</footer>
+
+</div><!-- /wrap -->
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById('themeToggle');
+    var icon = document.getElementById('themeIcon');
+    var label = document.getElementById('themeLabel');
+    function apply(t) {
+      root.setAttribute('data-theme', t);
+      var dark = t === 'dark';
+      icon.textContent = dark ? '☾' : '☀';
+      label.textContent = dark ? 'Dark' : 'Light';
+    }
+    function toggle() {
+      apply(root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark');
+    }
+    btn.addEventListener('click', toggle);
+    btn.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); }
+    });
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Callback — How It Works</title>
+<style>
+  :root {
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Menlo, monospace;
+    --c-auth:#38bdf8; --c-vault:#facc15; --c-interview:#fb923c; --c-resume:#f472b6;
+    --c-agent:#a78bfa; --c-save:#34d399; --c-free:#22c55e; --c-jd:#38bdf8;
+  }
+  html[data-theme="dark"] {
+    --bg:#0b1120; --bg-grad-1:#0e1a33; --surface:#131c31; --surface-2:#1b2740; --surface-3:#212f4d;
+    --border:#263251; --text:#e8edf7; --text-dim:#93a1bd; --text-mut:#64748b; --badge-bg:#1b2740;
+    --shadow:0 10px 30px rgba(0,0,0,.45); --arrow:#7dd3fc;
+  }
+  html[data-theme="light"] {
+    --bg:#eef2f9; --bg-grad-1:#f7f9fd; --surface:#ffffff; --surface-2:#f2f6fc; --surface-3:#e8effa;
+    --border:#d4deee; --text:#16233b; --text-dim:#4a5a76; --text-mut:#7688a3; --badge-bg:#eef3fb;
+    --shadow:0 8px 24px rgba(30,50,90,.12); --arrow:#0284c7;
+    --c-auth:#0284c7; --c-vault:#ca8a04; --c-interview:#ea580c; --c-resume:#db2777;
+    --c-agent:#7c3aed; --c-save:#059669; --c-free:#16a34a; --c-jd:#0284c7;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; }
+  body { font-family:var(--font); color:var(--text);
+    background:radial-gradient(1200px 600px at 15% -5%,var(--bg-grad-1),transparent 60%),
+      radial-gradient(1000px 700px at 110% 10%,var(--bg-grad-1),transparent 55%),var(--bg);
+    background-attachment:fixed; min-height:100vh; -webkit-font-smoothing:antialiased; transition:background-color .3s,color .3s; }
+  .wrap { max-width:1080px; margin:0 auto; padding:32px 28px 56px; }
+
+  header.top { display:flex; align-items:flex-start; justify-content:space-between; gap:24px; flex-wrap:wrap; margin-bottom:8px; }
+  .brand { display:flex; align-items:center; gap:14px; }
+  .logo { width:52px; height:52px; border-radius:14px; flex:none; background:linear-gradient(135deg,var(--c-interview),var(--c-resume));
+    display:grid; place-items:center; color:#fff; font-weight:800; font-size:24px; box-shadow:var(--shadow); font-family:var(--mono); }
+  h1 { font-size:26px; margin:0; letter-spacing:-.4px; }
+  .sub { color:var(--text-dim); font-size:13.5px; margin-top:3px; max-width:660px; }
+  .sub b { color:var(--text); font-weight:600; }
+  .toggle { display:inline-flex; align-items:center; gap:8px; cursor:pointer; background:var(--surface); border:1px solid var(--border);
+    color:var(--text-dim); border-radius:999px; padding:8px 14px; font-size:13px; font-weight:600; user-select:none; box-shadow:var(--shadow); transition:all .2s; }
+  .toggle:hover { color:var(--text); border-color:var(--c-auth); }
+
+  .value { display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:var(--surface); border:1px solid var(--border);
+    border-radius:14px; padding:14px 18px; margin:18px 0 26px; box-shadow:var(--shadow); }
+  .value .txt { font-size:13.5px; color:var(--text-dim); }
+  .value .txt b { color:var(--text); }
+  .value .pills { display:flex; gap:8px; margin-left:auto; flex-wrap:wrap; }
+  .fpill { display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:700; padding:6px 12px; border-radius:999px;
+    border:1px solid var(--border); background:var(--badge-bg); }
+  .fpill .d { width:8px; height:8px; border-radius:50%; }
+
+  .stage { position:relative; background:var(--surface); border:1px solid var(--border); border-left:5px solid var(--accent);
+    border-radius:15px; padding:16px 20px; box-shadow:var(--shadow); display:flex; gap:16px; align-items:flex-start; }
+  .step-num { flex:none; width:38px; height:38px; border-radius:11px; background:var(--accent); color:#0b1120; font-weight:800;
+    font-size:18px; display:grid; place-items:center; }
+  html[data-theme="light"] .step-num { color:#fff; }
+  .stage .body { flex:1; }
+  .stage h2 { margin:0 0 4px; font-size:16.5px; display:flex; align-items:center; gap:9px; flex-wrap:wrap; }
+  .stage h2 .ico { width:20px; height:20px; color:var(--accent); flex:none; }
+  .stage p { margin:0; font-size:12.5px; color:var(--text-dim); line-height:1.55; }
+  .stage p b { color:var(--text); }
+  .hood { margin-top:9px; display:inline-flex; align-items:center; gap:7px; font-family:var(--mono); font-size:10.5px; color:var(--text-mut);
+    background:var(--surface-2); border:1px solid var(--border); border-radius:8px; padding:4px 10px; }
+  .hood .lbl { color:var(--accent); font-weight:700; }
+  code { font-family:var(--mono); font-size:11px; background:var(--badge-bg); border:1px solid var(--border); padding:1px 6px; border-radius:5px; color:var(--text); }
+
+  .flowline { display:flex; flex-direction:column; align-items:center; color:var(--arrow); padding:5px 0; }
+  .flowline svg { display:block; }
+
+  .engine-banner { margin:5px 0; background:linear-gradient(180deg,color-mix(in srgb,var(--c-agent) 12%,var(--surface)),var(--surface));
+    border:1.5px solid var(--c-agent); border-radius:14px; padding:13px 18px; display:flex; align-items:center; gap:13px; box-shadow:var(--shadow); }
+  .engine-banner .tag { flex:none; background:var(--c-agent); color:#fff; font-size:10px; font-weight:800; letter-spacing:.5px;
+    text-transform:uppercase; padding:4px 11px; border-radius:999px; }
+  .engine-banner p { margin:0; font-size:12.5px; color:var(--text-dim); line-height:1.5; }
+  .engine-banner p b { color:var(--text); }
+
+  .lanes { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:5px; }
+  @media (max-width:760px){ .lanes{ grid-template-columns:1fr; } }
+  .lane { border:1px solid var(--border); border-top:4px solid var(--accent); border-radius:14px; background:var(--surface); padding:15px 16px 16px; box-shadow:var(--shadow); }
+  .lane-h { display:flex; align-items:center; gap:9px; margin-bottom:5px; }
+  .lane-h .ico { width:22px; height:22px; color:var(--accent); flex:none; }
+  .lane-h h3 { margin:0; font-size:15px; }
+  .lane-h .goal { margin-left:auto; font-size:10.5px; font-family:var(--mono); color:var(--text-mut); }
+  .source-tag { display:inline-flex; align-items:center; gap:7px; font-size:11px; font-weight:700; border-radius:999px; padding:4px 11px;
+    margin-bottom:12px; border:1px solid var(--srcc); color:var(--srcc); background:color-mix(in srgb,var(--srcc) 12%,transparent); }
+  .mini { display:flex; align-items:stretch; gap:0; }
+  .mstep { flex:1; position:relative; background:var(--surface-2); border:1px solid var(--border); border-radius:10px;
+    padding:10px 11px; margin-right:22px; display:flex; flex-direction:column; gap:3px; }
+  .mstep:last-child { margin-right:0; }
+  .mstep:not(:last-child)::after { content:"→"; position:absolute; right:-17px; top:50%; transform:translateY(-50%); color:var(--arrow); font-size:16px; font-weight:700; }
+  .mstep .mt { font-size:11.5px; font-weight:700; }
+  .mstep .md { font-size:10.5px; color:var(--text-dim); line-height:1.4; }
+  .mstep.in { border-color:var(--srcc); }
+  .mstep.out { border-color:var(--accent); background:color-mix(in srgb,var(--accent) 12%,var(--surface-2)); }
+  .lane .grounded-note { margin-top:11px; font-size:11px; color:var(--text-dim); display:flex; align-items:flex-start; gap:7px; line-height:1.45; }
+  .lane .grounded-note b { color:var(--srcc); }
+
+  .highlights { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:26px; }
+  @media (max-width:760px){ .highlights{ grid-template-columns:1fr; } }
+  .hl { border:1px solid var(--border); border-radius:14px; padding:16px 18px; box-shadow:var(--shadow); }
+  .hl.ground { border-left:5px solid var(--c-agent); background:linear-gradient(180deg,color-mix(in srgb,var(--c-agent) 8%,var(--surface)),var(--surface)); }
+  .hl.safe { border-left:5px solid var(--c-free); background:linear-gradient(180deg,color-mix(in srgb,var(--c-free) 8%,var(--surface)),var(--surface)); }
+  .hl h3 { margin:0 0 6px; font-size:15px; display:flex; align-items:center; gap:9px; }
+  .hl.ground h3 .ico { color:var(--c-agent); } .hl.safe h3 .ico { color:var(--c-free); }
+  .hl h3 .ico { width:20px; height:20px; flex:none; }
+  .hl p { margin:0; font-size:12.5px; color:var(--text-dim); line-height:1.55; }
+  .hl p b { color:var(--text); }
+  .srcmap { margin-top:11px; display:flex; flex-direction:column; gap:7px; }
+  .srcrow { display:flex; align-items:center; gap:9px; font-size:11.5px; }
+  .srcrow .lz { flex:none; width:118px; font-weight:700; display:flex; align-items:center; gap:7px; }
+  .srcrow .lz .d { width:8px; height:8px; border-radius:50%; }
+  .srcrow .ar { color:var(--text-mut); font-family:var(--mono); }
+  .srcrow .src { color:var(--text-dim); }
+  .srcrow .src b { color:var(--text); }
+  .hl .chain { margin-top:10px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; font-family:var(--mono); font-size:10.5px; }
+  .hl .chip { padding:3px 9px; border-radius:999px; border:1px solid var(--border); background:var(--surface-2); }
+  .hl .chip.floor { border-color:var(--c-free); color:var(--c-free); font-weight:700; }
+  .hl .arw { color:var(--text-mut); }
+
+  footer.foot { margin-top:24px; text-align:center; color:var(--text-mut); font-size:11.5px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo">C</div>
+      <div>
+        <h1>Callback — How It Works</h1>
+        <div class="sub">One agent, two jobs: it turns a <b>job description</b> into interview practice, and your <b>Career Vault</b> into a sharper resume — with a fallback floor so a live demo never breaks.</div>
+      </div>
+    </div>
+    <div class="toggle" id="themeToggle" role="button" tabindex="0"><span id="themeIcon">☾</span><span id="themeLabel">Dark</span></div>
+  </header>
+
+  <div class="value">
+    <span class="txt"><b>What it does:</b> generates likely interview questions from the role you're targeting, and rewrites your resume from your real wins.</span>
+    <div class="pills">
+      <span class="fpill"><span class="d" style="background:var(--c-interview)"></span>Interview Prep</span>
+      <span class="fpill"><span class="d" style="background:var(--c-resume)"></span>Resume Rewriter</span>
+      <span class="fpill"><span class="d" style="background:var(--c-vault)"></span>Career Vault</span>
+      <span class="fpill"><span class="d" style="background:var(--c-save)"></span>Sessions</span>
+    </div>
+  </div>
+
+  <!-- STEP 1 -->
+  <div class="stage" style="--accent:var(--c-auth)">
+    <div class="step-num">1</div>
+    <div class="body">
+      <h2><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z"/><path d="M9 12l2 2 4-4"/></svg>Sign in securely</h2>
+      <p>The user signs in with <b>Supabase</b>. Everything from here is scoped to their account — nobody sees anyone else's data.</p>
+      <span class="hood"><span class="lbl">under the hood</span>Supabase JWT · per-user Row-Level Security</span>
+    </div>
+  </div>
+
+  <div class="flowline"><svg width="20" height="22" viewBox="0 0 20 22"><line x1="10" y1="0" x2="10" y2="14" stroke="currentColor" stroke-width="2"/><path d="M10 22 L4 13 L16 13 Z" fill="currentColor"/></svg></div>
+
+  <!-- STEP 2 -->
+  <div class="stage" style="--accent:var(--c-agent)">
+    <div class="step-num">2</div>
+    <div class="body">
+      <h2><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v6"/><path d="M12 9L6 15"/><path d="M12 9l6 6"/><circle cx="12" cy="3" r="1.6" fill="currentColor"/><circle cx="6" cy="17" r="1.6" fill="currentColor"/><circle cx="18" cy="17" r="1.6" fill="currentColor"/></svg>Pick a goal — the agent takes over</h2>
+      <p>The user chooses <b>interview prep</b> or <b>resume rewrite</b>. Both run on the <b>same agentic engine</b>, but each is grounded in a <b>different source</b>: the interview side reads the <b>job description</b>; the resume side reads the user's <b>Career Vault</b>.</p>
+    </div>
+  </div>
+
+  <div class="flowline"><svg width="20" height="16" viewBox="0 0 20 16"><line x1="10" y1="0" x2="10" y2="12" stroke="currentColor" stroke-width="2"/></svg></div>
+
+  <div class="engine-banner">
+    <span class="tag">Agentic engine</span>
+    <p><b>ReAct loop:</b> reason → act → observe, looping until done. Interview prep works from the <b>job description you paste</b>; the resume rewriter calls <code>vault_search</code> to pull your <b>real experience</b>. Same engine, right source for each job.</p>
+  </div>
+
+  <div class="lanes">
+    <!-- Interview: JOB DESCRIPTION -->
+    <div class="lane" style="--accent:var(--c-interview); --srcc:var(--c-jd)">
+      <div class="lane-h">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a8 8 0 01-8 8H7l-4 3v-4a8 8 0 0118-7z"/><path d="M9 11h6M9 8h6"/></svg>
+        <h3>Interview Prep</h3><span class="goal">goal: nail the interview</span>
+      </div>
+      <span class="source-tag"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 2h9l5 5v15H6z"/><path d="M9 12h7M9 16h7M9 8h4"/></svg>Source: the JOB DESCRIPTION</span>
+      <div class="mini">
+        <div class="mstep in"><span class="mt">Paste the JD</span><span class="md">User drops in the job description for the role.</span></div>
+        <div class="mstep"><span class="mt">Generate</span><span class="md">Agent writes likely questions <b>from the JD</b>.</span></div>
+        <div class="mstep out"><span class="mt">Practice</span><span class="md">Role-specific questions to rehearse.</span></div>
+      </div>
+      <div class="grounded-note"><b>◆ Grounded in the role:</b> questions come from the job description you're targeting — not the user's own data.</div>
+    </div>
+
+    <!-- Resume: CAREER VAULT -->
+    <div class="lane" style="--accent:var(--c-resume); --srcc:var(--c-vault)">
+      <div class="lane-h">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2h9l5 5v15H6z"/><path d="M14 2v5h5"/><path d="M9 13h7M9 17h7"/></svg>
+        <h3>Resume Rewriter</h3><span class="goal">goal: a sharper resume</span>
+      </div>
+      <span class="source-tag"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/></svg>Source: your CAREER VAULT</span>
+      <div class="mini">
+        <div class="mstep in"><span class="mt">From Vault</span><span class="md">Agent pulls your real wins via <code>vault_search</code>.</span></div>
+        <div class="mstep"><span class="mt">Rewrite</span><span class="md">Reworks resume lines using those achievements.</span></div>
+        <div class="mstep out"><span class="mt">Polished</span><span class="md">Punchier, grounded resume copy.</span></div>
+      </div>
+      <div class="grounded-note"><b>◆ Grounded in you:</b> rewrites are built from your real accomplishments — nothing invented.</div>
+    </div>
+  </div>
+
+  <div class="flowline"><svg width="20" height="22" viewBox="0 0 20 22"><line x1="10" y1="0" x2="10" y2="14" stroke="currentColor" stroke-width="2"/><path d="M10 22 L4 13 L16 13 Z" fill="currentColor"/></svg></div>
+
+  <!-- STEP 3 -->
+  <div class="stage" style="--accent:var(--c-save)">
+    <div class="step-num">3</div>
+    <div class="body">
+      <h2><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h12v18l-6-4-6 4z"/></svg>Save &amp; revisit</h2>
+      <p>Each run is saved as a <b>session</b> the user can revisit, review, or clear out — so prep builds up over time instead of vanishing when they close the tab.</p>
+      <span class="hood"><span class="lbl">under the hood</span>sessions API · create / list / delete, scoped per user</span>
+    </div>
+  </div>
+
+  <div class="highlights">
+    <div class="hl ground">
+      <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg>Grounded in the right source</h3>
+      <p>Callback retrieves <b>before</b> it writes — and each feature pulls from the source that actually fits it:</p>
+      <div class="srcmap">
+        <div class="srcrow"><span class="lz"><span class="d" style="background:var(--c-interview)"></span>Interview Prep</span><span class="ar">←</span><span class="src">the <b>job description</b> (the role)</span></div>
+        <div class="srcrow"><span class="lz"><span class="d" style="background:var(--c-resume)"></span>Resume Rewriter</span><span class="ar">←</span><span class="src">your <b>Career Vault</b> (your wins)</span></div>
+      </div>
+    </div>
+    <div class="hl safe">
+      <h3><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6l8-4z"/><path d="M8 12l2.5 2.5L16 9"/></svg>Demo-safe: it always works</h3>
+      <p>If a model provider fails or times out, Callback falls through a chain that ends on a <b>free, deterministic floor</b> — so a live demo never dead-ends on an error.</p>
+      <div class="chain">
+        <span class="chip">OpenRouter</span><span class="arw">▶</span>
+        <span class="chip">Ollama</span><span class="arw">▶</span>
+        <span class="chip">Anthropic</span><span class="arw">▶</span>
+        <span class="chip floor">Deterministic floor</span>
+      </div>
+    </div>
+  </div>
+
+  <footer class="foot">Callback · interview prep ← job description · resume rewriter ← your Career Vault · save &amp; revisit · toggle theme, top-right</footer>
+
+</div>
+
+<script>
+  (function () {
+    var root=document.documentElement, btn=document.getElementById('themeToggle');
+    var icon=document.getElementById('themeIcon'), label=document.getElementById('themeLabel');
+    function apply(t){ root.setAttribute('data-theme',t); var d=t==='dark'; icon.textContent=d?'☾':'☀'; label.textContent=d?'Dark':'Light'; }
+    function toggle(){ apply(root.getAttribute('data-theme')==='dark'?'light':'dark'); }
+    btn.addEventListener('click',toggle);
+    btn.addEventListener('keydown',function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } });
+  })();
+</script>
+</body>
+</html>

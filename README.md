@@ -1,170 +1,64 @@
-# Sprint Zero
+# Callback
 
-> **Part of the [Enterprise RAG & Multi-Agent Applications](../../README.md) course** — a full-stack, multi-agent capstone project.
-> Built by **[Yousuf Alvi](https://github.com/yousuf-alvi)** and **[Hamza Farooq](https://www.linkedin.com/in/hamzafarooq/)**.
+**Tailor the résumé. Rehearse the interview. Land the callback.**
 
-**Point it at a product. Answer three questions. Get back a complete spec set and a working app.**
+Callback turns one saved job into a vault-grounded résumé, a matching cover letter, a 0–100 fit score, and a spoken mock interview — every answer built from your real career history, so you walk in ready. It's an **agentic RAG** app: a longitudinal *Career Vault* of atomic career facts grounds everything the model writes, with provenance you can trace back to the source.
 
-Sprint Zero is a Claude Code kit that gives a PM or founder a full sub-agent product team on their laptop. You bring the idea and a reference URL. Sprint Zero handles scoping, research, specs, parallel engineering, and QA — and hands back a running product.
-
----
-
-## The problem
-
-Validating a product idea today looks something like this:
-
-- Write a rough PRD, argue about it in Notion
-- Hand-wave an API contract, hope the engineers read it the same way
-- Wait a week or three for a prototype
-- Find out on demo day that the core loop doesn't actually work
-- Go back to the PRD
-
-Every step loses signal. By the time a PM sees something clickable, the idea has passed through three games of telephone. Nothing is built to one shared interface. Nothing is testable against the original intent.
-
-Sprint Zero collapses that cycle into one terminal session. The PM stays in the loop the whole way through because the loop is now minutes long, not weeks.
+> **Origin.** Callback was scaffolded from [**Sprint Zero**](https://github.com/yousuf-labs/sprint-zero) — a Claude Code kit that spins up a full sub-agent product team (scoping → specs → parallel build → QA) from one reference URL. Sprint Zero produced the initial React + Express + Supabase skeleton and the spec set in [`docs/`](docs/); everything since — the Career Vault, the ReAct agent harness, the LLM router, and the Interview Studio — is Callback-specific work built on top. Sprint Zero is part of the [Enterprise RAG & Multi-Agent Applications](https://maven.com/boring-bot/advanced-llm) course by [Yousuf Alvi](https://github.com/yousuf-alvi) and [Hamza Farooq](https://www.linkedin.com/in/hamzafarooq/). See [Acknowledgments](#acknowledgments).
 
 ---
 
-## The promise
+## What it does
 
-One command. One reference URL. Three scoping answers. You get:
-
-- A full spec set in `docs/` — scope, research brief, PRD, decisions, user stories, API contract
-- A working build in `server/` and `client/` — Express + Supabase API, React frontend, real auth
-- Playwright-driven QA covering the auth dance and the core product loop
-
-For a `MVP` scope, expect ten to twenty minutes end-to-end.
-
----
-
-## How it flows
-
-```mermaid
-flowchart LR
-    A[You]
-    B[Scoping]
-    C[Spec set]
-    D[Parallel build]
-    E[QA]
-    F[Running product]
-
-    A -->|URL + 3 answers| B
-    B --> C
-    C --> D
-    D --> E
-    E --> F
-```
-
-One command drives the whole flow. You watch it happen in the Claude Code terminal and can read every spec file before code gets written.
+- **Career Vault** — your longitudinal record of atomic career facts (experience, projects, achievements, skills, education). Each item is embedded into pgvector on write; every tailored bullet and interview question is grounded in — and cites — an item here. Upload a résumé (PDF / Word / text) once to seed it, or build it by hand.
+- **Tailor in minutes** — generate a résumé and cover letter shaped to one specific job, drawn from your vault via vector retrieval with provenance you can trust.
+- **Score the fit** — a 0–100 match score with matched and missing keywords tells you what to fix *before* you apply.
+- **Interview Studio** — behavioral STAR questions generated from the **job description** and grounded in your vault, read aloud, with your spoken answers recorded and transcribed (swappable voice seam).
+- **Track the pipeline** — move every job from Bookmarked → Applied → Interviewing → Offer on one board. Import a posting straight from a link (Greenhouse / Lever / JSON-LD, SSRF-guarded).
+- **Free to run** — every feature works with no paid dependency. See [The free floor](#the-free-floor).
 
 ---
 
-## The three scope levels
+## How it works
 
-You pick one when you answer the scoping question. The level is stored in `docs/scope.md` and calibrates every agent downstream.
+One agent, two jobs. Sign in (Supabase, per-user RLS), pick a goal, and the same **ReAct** engine runs — but each side is grounded in the source that fits it: **interview prep** reads the **job description** you paste; the **resume rewriter** calls `vault_search` to pull your **real wins** from the Career Vault. Every run is saved as a session you can revisit, and a fallback chain ending in a free deterministic floor keeps a live demo from ever dead-ending.
 
-| Level       | What it produces                                   | Good for                        |
-| ----------- | -------------------------------------------------- | ------------------------------- |
-| `clickable` | Mock backend, fake data, no auth                   | Pitching and flow reviews       |
-| `MVP`       | Real Supabase, real auth, one core loop end-to-end | Showing the idea actually works |
-| `Prod`      | MVP plus error states, validation, loading states  | Handing to 5–10 real users      |
+![How Callback works — sign in, pick interview prep (grounded in the job description) or resume rewrite (grounded in your Career Vault), both on one ReAct agent, saved as revisitable sessions, with an OpenRouter ▶ Ollama ▶ Anthropic ▶ deterministic-floor fallback chain.](docs/how-it-works.png)
 
-`MVP` is the main demo path for v1. `clickable` is an escape hatch for very early ideation.
+> 📐 **Interactive version:** open [`docs/how-it-works.html`](docs/how-it-works.html) in a browser (light/dark toggle).
 
 ---
 
-## The agent team
+## Architecture
 
-Sprint Zero has four sub-agents. You only ever talk to the main session — it orchestrates the rest.
+Requests flow top → bottom through six layers — Client → API → **ReAct agent harness** → LLM router → embeddings → Supabase/pgvector — and every path bottoms out in a **free, deterministic floor** so the demo can never dead-end. No paid dependency is ever required.
 
-```mermaid
-flowchart TD
-    User[You]
-    Main[Main session]
-    TL[tech-lead]
-    BE[backend-engineer]
-    FE[frontend-engineer]
-    QA[qa-engineer]
+![Callback system architecture — six layers from the React SPA down through the Express API, the ReAct agent harness, the LLM router fallback chain, the embedders, and Supabase Postgres + pgvector, plus a trace of one grounded interview-question request.](docs/architecture.png)
 
-    User -->|/sprint-zero url| Main
-    Main -->|reads specs| TL
-    TL -->|build brief| Main
-    Main -->|parallel| BE
-    Main -->|parallel| FE
-    BE --> QA
-    FE --> QA
-    QA -->|report| Main
-    Main -->|delivery summary| User
-```
+> 📐 **Interactive, themeable version:** open [`docs/architecture.html`](docs/architecture.html) in a browser for the light/dark toggle and the same layout live.
 
-- **tech-lead** reads the spec set and returns a structured build brief. It does not write code.
-- **backend-engineer** builds Express + Supabase in `server/`.
-- **frontend-engineer** builds React + Vite + Supabase Auth in `client/`.
-- **qa-engineer** runs Playwright against the live app — auth dance plus the core loop.
+A few load-bearing details from the diagram:
 
-Backend and frontend never talk to each other. The API contract is the shared interface.
+- **The LLM router never dead-ends.** `OpenRouter ▶ Ollama ▶ Anthropic ▶ Deterministic Mock` — each provider hands off to the next when it's absent or fails, and the deterministic mock is a guaranteed-free floor that always resolves.
+- **The agent harness is provider-agnostic.** It drives a Reason → Act → Observe → Final loop over plain-JSON tool calls (no native tool-calling), with a hardened parser and a deterministic-question fallback so a bad model response never breaks the request.
+- **Seed and serve with the same embedder.** Whichever embedder writes the 768-dim vectors into the vault must also embed queries, or cosine similarity breaks — deterministic signed-hash on deploy, Ollama `nomic-embed-text` locally.
 
-### Why orchestration lives in the main session
+### The free floor
 
-Claude Code does not permit sub-agents to spawn other sub-agents. `tech-lead` could not spawn the engineers even if we wanted it to. So tech-lead is a briefing layer, and the main session is the orchestrator. This also makes the demo clearer — the PM watching the session sees the parallel spawn happen in the main view, not buried inside a sub-agent's output.
+The guarantee: **the free/local path always works.** A deterministic mock is the guaranteed-free floor for generation, and a deterministic 768-dim signed-hash embedder stands in whenever Ollama is absent. Add an `OPENROUTER_API_KEY` (or run Ollama locally, or add an `ANTHROPIC_API_KEY`) to upgrade quality — but nothing is *required*, and no paid tier gates any feature.
 
 ---
 
-## The spec pipeline
+## Stack
 
-Before any code runs, Sprint Zero writes six documents to `docs/`. Each feeds the next.
-
-```mermaid
-flowchart LR
-    S1[scope.md]
-    S2[reference-brief.md]
-    S3[prd.md]
-    S4[decisions.md]
-    S5[user-stories.md]
-    S6[api-contract.md]
-
-    S1 --> S2 --> S3 --> S4 --> S5 --> S6
-```
-
-| File                 | What's in it                                      |
-| -------------------- | ------------------------------------------------- |
-| `scope.md`           | Build level, core loop, excludes                  |
-| `reference-brief.md` | What the reference product does and how           |
-| `prd.md`             | What we're building and why                       |
-| `decisions.md`       | Every scope cut, tied to the chosen level         |
-| `user-stories.md`    | Acceptance criteria Playwright can drive          |
-| `api-contract.md`    | The shared interface both engineers build against |
-
-The pipeline is resumable. Each step checks whether its output file already exists and skips if so. If something fails, re-run `/sprint-zero` and it picks up where it stopped.
-
----
-
-## The API contract is law
-
-```mermaid
-flowchart TD
-    C[api-contract.md]
-    C --> BE[backend-engineer<br/>implements]
-    C --> FE[frontend-engineer<br/>consumes]
-    C --> QA[qa-engineer<br/>validates]
-```
-
-Endpoint paths, request shapes, response shapes, status codes — all defined in one file. The engineers build in parallel without ever speaking to each other because they are both building to the same contract. If any agent needs to deviate, it stops and flags it rather than diverging silently.
-
----
-
-## The stack (fixed)
-
-Not configurable in v1. Picking one stack is what makes Sprint Zero actually ship.
-
-| Layer           | Technology                          |
-| --------------- | ----------------------------------- |
-| Frontend        | React + Vite                        |
-| Backend         | Express (Node.js)                   |
-| Database + Auth | Supabase (Postgres + Supabase Auth) |
-| Testing         | Playwright via Playwright MCP       |
-
-You bring your own Supabase project. Free tier is fine.
+| Layer            | Technology                                                              |
+| ---------------- | ----------------------------------------------------------------------- |
+| Frontend         | React + Vite (`client/`)                                                |
+| Backend          | Express, Node.js (ESM) — every route `requireAuth` (`server/`)          |
+| Database + Auth  | Supabase — Postgres + **pgvector**, Row-Level Security, Supabase Auth   |
+| Retrieval        | pgvector cosine similarity via a `match_career_items` RPC (HNSW index)  |
+| LLM router       | OpenRouter ▶ Ollama (local) ▶ Anthropic ▶ deterministic mock            |
+| Embeddings       | Deterministic signed-hash (deploy) / Ollama `nomic-embed-text` (local)  |
 
 ---
 
@@ -173,277 +67,104 @@ You bring your own Supabase project. Free tier is fine.
 ### 1. Prerequisites
 
 - [Node.js](https://nodejs.org) 18+
-- [Claude Code](https://claude.com/claude-code) installed and authenticated
-- A free [Supabase](https://supabase.com) account
-- Playwright MCP registered in Claude Code (so QA can drive the browser). If `claude mcp list` does not show `playwright`, install it and register it under that name.
+- A free [Supabase](https://supabase.com) project (Postgres + Auth). Enable **Authentication → Providers → Email**.
+- *(Optional)* an `OPENROUTER_API_KEY`, a local [Ollama](https://ollama.com), or an `ANTHROPIC_API_KEY` for AI-quality output. Skip all three and the deterministic floor still runs.
 
-### 2. Create a Supabase project
-
-Go to [supabase.com](https://supabase.com), click **New project**, pick any name and region, and wait for it to provision. Then go to **Authentication → Providers → Email** and confirm it is enabled.
-
-### 3. Collect four credentials
-
-From your Supabase project's **Settings** page:
-
-| Where                                                                   | Value                      | Goes into `.env` as        |
-| ----------------------------------------------------------------------- | -------------------------- | -------------------------- |
-| Settings → API → Project URL                                            | `https://xxxx.supabase.co` | `SUPABASE_URL`             |
-| Settings → API Keys → Publishable key                                   | `sb_publishable_...`       | `SUPABASE_PUBLISHABLE_KEY` |
-| Settings → API Keys → Secret key (click Reveal)                         | `sb_secret_...`            | `SUPABASE_SECRET_KEY`      |
-| Settings → Database → Connection string → URI (Session mode, port 5432) | `postgresql://postgres...` | `DATABASE_URL`             |
-
-Use the new **API Keys** tab in Supabase, not the **Legacy** tab — the legacy tab still shows "anon" and "service*role", but Sprint Zero expects the new `sb_publishable*...`/`sb*secret*...` format.
-
-`DATABASE_URL` is the direct Postgres connection string. Sprint Zero uses it to create tables automatically — no manual SQL pasting.
-
-### 4. Clone and configure
+### 2. Configure the server
 
 ```bash
-git clone https://github.com/yousuf-labs/sprint-zero
-cd sprint-zero
+git clone https://github.com/datasistah/callback
+cd callback/server
 cp .env.example .env
-# open .env and paste in the four values from step 3
+# open .env and fill in the Supabase values (URL, publishable + secret keys, DATABASE_URL).
+# LLM keys are optional — leave them blank to run on the free floor.
 ```
 
-### 5. Run Sprint Zero
+The four Supabase values come from your project's **Settings → API** (Project URL, publishable key, secret key) and **Settings → Database → Connection string → URI** (`DATABASE_URL`, session mode, port 5432).
+
+### 3. Create tables and seed the demo
 
 ```bash
-claude
+# from server/
+npm install
+npm run migrate   # applies migrations/ (career_items + pgvector, interview, jobs)
+npm run seed      # creates the demo user + Maya Rivera's base profile & vault
 ```
 
-Then in Claude Code:
+`seed.js` prints the demo login on completion:
 
 ```
-/sprint-zero https://twenty.com/ https://github.com/twentyhq/twenty
+Email:    maya.rivera@example.com
+Password: JobTailor2026!
 ```
 
-Pass any product URL you want to reference (a landing page, an open-source tool, a competitor). Sprint Zero will ask you three questions in one message — answer in a paragraph, no formatting needed:
-
-1. **Project name** — a short slug for this build
-2. **What level?** — `clickable`, `MVP`, or `Prod`
-3. **What's the core loop?** — the one user flow that must work
-4. **Anything to exclude?** — features you don't want
-
-#### Example answer — a mini CRM referenced from [twenty.com](https://twenty.com/)
-
-> **What level are we building?**
-> MVP
->
-> **What's the core loop?**
-> The core loop is: user creates a contact (name, email, company), creates a deal linked to that contact (name, value, stage), and moves the deal across pipeline stages (Lead → Qualified → Proposal → Closed Won / Closed Lost). That's what a MVP has to prove.
->
-> **Anything to exclude?**
-> Companies as a separate entity (roll company into the contact record as a text field), custom fields, activities and notes on records, email integration, import / export, filters and saved views, search, reporting and dashboards, tasks, calendar, and any admin / settings UI.
-
-Notice how the excludes list is long and specific. That's the point — naming what you're cutting is how you keep a `MVP` to ten to twenty minutes and stop the agents from quietly building a full CRM.
-
-Sprint Zero handles the rest.
-
-### 6. The app launches itself
-
-Once QA passes, `/sprint-zero` automatically:
-
-1. Runs `npm install` in `server/` and `client/` (skipped if `node_modules/` already exists)
-2. Writes `client/.env` with `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` pulled from the root `.env`
-3. Runs `node seed.js` to create tables and demo data
-4. Starts the backend on [http://localhost:3001](http://localhost:3001) in the background
-5. Starts the frontend on [http://localhost:5173](http://localhost:5173) in the background
-6. Prints the demo user's email and password
-
-Open [http://localhost:5173](http://localhost:5173). You'll land on a polished marketing page — click **Log in** in the top nav and use the credentials from the launch summary to enter the product.
-
-To stop the servers when you're done:
+### 4. Run it
 
 ```bash
-pkill -f "node index.js" && pkill -f "vite"
-```
+# Terminal 1 — API on http://localhost:3001
+cd server && npm start
 
-Pass `--no-launch` to `/sprint-zero` if you'd rather wire it up by hand — see the next section.
-
----
-
-## Start the app manually
-
-You can skip auto-launch with `/sprint-zero <url> --no-launch`, or run these steps any time afterward to restart things.
-
-```bash
-# Terminal 1 — backend
-cd server
-npm install       # first run only
-node seed.js      # creates tables + demo data (first run only)
-node index.js     # API on http://localhost:3001
-
-# Terminal 2 — frontend
+# Terminal 2 — app on http://localhost:5173
 cd client
-npm install              # first run only
-cp .env.example .env     # first run only — then paste VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
-npm run dev              # app on http://localhost:5173
+cp .env.example .env   # first run — paste VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
+npm install
+npm run dev
 ```
 
-The seed script prints the demo user's email and password. Use those to log in at [http://localhost:5173](http://localhost:5173).
-
-> The frontend needs its own `.env` with `VITE_`-prefixed variables because Vite only exposes env vars with that prefix to the browser. Reuse the same `SUPABASE_URL` and `SUPABASE_PUBLISHABLE_KEY` values from the root `.env`.
+Open [http://localhost:5173](http://localhost:5173), click **Log in**, and use the demo credentials. Vite only exposes `VITE_`-prefixed env vars to the browser, which is why the client needs its own `.env`.
 
 ---
 
-## What `node seed.js` does
+## Tests
 
-```mermaid
-flowchart LR
-    A[node seed.js] --> B[Create tables<br/>via migrate.js]
-    B --> C[Create demo user<br/>via Supabase admin]
-    C --> D[Insert seed rows]
-    D --> E[Print credentials]
+Hermetic server-side suites — no DB, no network, no env — covering the RAG logic, the agent harness, interview generation, job import, and the MCP surface:
+
+```bash
+cd server
+node tests/vault.unit.test.js
+node tests/agent.unit.test.js
+node tests/interview.unit.test.js
+node tests/jobimport.unit.test.js
+node tests/mcp.unit.test.js
 ```
-
-It is idempotent. Running it twice is safe. Tables are created with `IF NOT EXISTS`. The demo user is checked before creation. Seed rows are cleared and re-inserted each run.
 
 ---
 
 ## Repo layout
 
 ```
-sprint-zero/
-├── .claude/
-│   ├── commands/                    ← slash commands (the pipeline)
-│   │   ├── sprint-zero.md             main orchestrator
-│   │   ├── sprint-zero-scope.md       scoping question → scope.md
-│   │   ├── explain-me-a-repo.md       research → reference-brief.md
-│   │   ├── prd-generator.md           → prd.md
-│   │   ├── decisions-writer.md        → decisions.md
-│   │   ├── user-story-writer.md       → user-stories.md
-│   │   └── api-contract-writer.md     → api-contract.md
-│   └── agents/                      ← sub-agents (the build layer)
-│       ├── tech-lead.md
-│       ├── backend-engineer.md
-│       ├── frontend-engineer.md
-│       └── qa-engineer.md
-├── docs/                            ← generated specs (gitignored; filled at runtime)
-├── examples/                        ← worked examples (Mini Twenty lands here in Phase 5)
-├── server/                          ← Express + Supabase (gitignored; created at runtime)
-├── client/                          ← React + Vite (gitignored; created at runtime)
-├── .env.example                     ← copy to .env and fill in
-├── .gitignore
-├── CLAUDE.md                        ← project instructions for Claude Code
-├── LICENSE
-├── plan.md                          ← phased build plan for this repo
+callback/
+├── client/                 ← React + Vite SPA
+│   └── src/
+│       ├── pages/            Board, JobDetail, Profile, Vault, InterviewStudio
+│       ├── api/client.js     typed fetch wrapper (Bearer JWT)
+│       ├── auth/             Supabase session provider
+│       └── voice/            swappable speech-to-text seam
+├── server/                 ← Express API (ESM)
+│   ├── routes/               interview · jobs · profile · vault
+│   ├── lib/                  vault (RAG) · tailor · score · interview · jobimport · ai
+│   ├── harness/              agent (ReAct) · llm (router) · embeddings
+│   ├── mcp/                  MCP server surface
+│   ├── middleware/auth.js    requireAuth — verifies the Supabase JWT
+│   ├── migrations/           001_init · 002_career_vault · 003_interview
+│   ├── migrate.js · seed.js · reset-demo.js
+├── docs/                   ← specs (from Sprint Zero) + architecture diagram
+│   ├── architecture.html     interactive, themeable
+│   ├── architecture.png       rendered for this README
+│   └── prd.md · api-contract.md · scope.md · decisions.md · …
+├── samples/                ← sample résumés (txt/pdf/docx) for testing uploads
 └── README.md
 ```
 
-On a fresh clone you'll only see the committed items. `docs/`, `server/`, and `client/` are populated when `/sprint-zero` runs.
-
 ---
 
-## Re-running pieces individually
+## Acknowledgments
 
-Every spec command works on its own. Delete the target file first if you want to regenerate it.
+Callback started from **Sprint Zero**, the scaffolding kit that generated its first working skeleton and spec set:
 
-```
-/sprint-zero-scope      re-run scoping
-/explain-me-a-repo      re-research the reference
-/prd-generator          regenerate the PRD
-/decisions-writer       regenerate decisions
-/user-story-writer      regenerate stories
-/api-contract-writer    regenerate the contract
-```
+- **[Yousuf Alvi](https://github.com/yousuf-alvi)** ([LinkedIn](https://www.linkedin.com/in/yousufalvi/)) — original author of Sprint Zero, published at [yousuf-labs/sprint-zero](https://github.com/yousuf-labs/sprint-zero).
+- **[Hamza Farooq](https://www.linkedin.com/in/hamzafarooq/)** — course integration, [Enterprise RAG & Multi-Agent Applications](https://maven.com/boring-bot/advanced-llm).
 
-### Flags on `/sprint-zero`
-
-| Flag          | Effect                                                                                     |
-| ------------- | ------------------------------------------------------------------------------------------ |
-| `--fresh`     | Delete `docs/` and regenerate all specs from scratch                                       |
-| `--rebuild`   | Delete `server/` and `client/` and rebuild from existing specs                             |
-| `--no-launch` | Skip auto-launch at the end. Start the servers manually afterwards.                        |
-| `--present`   | Boot the presenter UI in the browser. Collects scoping via a form and shows live progress. |
-
-Example: `/sprint-zero https://example.com --fresh`
-
-### Named failure states
-
-If anything goes wrong, `/sprint-zero` prints a named state and a recovery instruction.
-
-| State                | Meaning                         | Recovery                                      |
-| -------------------- | ------------------------------- | --------------------------------------------- |
-| `SCOPE_NEEDED`       | `docs/scope.md` was not written | Re-run with a reachable URL                   |
-| `DISCOVERY_NEEDED`   | Reference brief failed          | Fix connectivity, re-run                      |
-| `SPEC_INCOMPLETE`    | A spec file is missing          | Run the failing command directly, then re-run |
-| `BUILD_BRIEF_NEEDED` | tech-lead flagged a doc problem | Fix the doc, re-invoke tech-lead              |
-| `BUILD_NEEDED`       | An engineer failed              | Re-spawn the failing engineer, then QA        |
-| `QA_NEEDED`          | Tests failed                    | Fix the reported issues, re-spawn QA          |
-| `LAUNCH_FAILED`      | Auto-launch at the end failed   | Start the servers manually (see above)        |
-
----
-
-## Sprint Zero — `--present` mode
-
-For walking PMs or non-developers through Sprint Zero, run it with `--present`:
-
-```
-/sprint-zero https://twenty.com https://github.com/twentyhq/twenty --present
-```
-
-A polished local UI boots at `http://localhost:4000` and opens in the browser. Use it for three phases of the demo:
-
-1. **About** — explains scope levels, the agent topology, and the spec pipeline. Stay here while you talk through the concept.
-2. **Start a run** — a form replaces the terminal scoping conversation. Submitting it writes `docs/scope.md`.
-3. **Live** — a vertical pipeline timeline updates in real time as each spec doc lands. Click any completed step to view its rendered markdown. The build phase shows backend and frontend as side-by-side cards. When the run finishes, the screen reveals the running app's URL with a copyable demo login.
-
-The presenter is a permanent committed part of the kit, not a one-off. The terminal narration is unchanged, so you can also screen-share the Claude Code window alongside the UI.
-
-To boot the presenter on its own (without a Sprint Zero run):
-
-```
-cd presenter && npm install && npm run build && npm start
-```
-
----
-
-## Troubleshooting
-
-**The page shows "Failed to load contacts" (or similar).** Database tables aren't created yet. Run `cd server && node seed.js`.
-
-**The server crashes on startup.** `server/.env` is missing or incomplete. The error message will name the missing key.
-
-**Every API call returns 401.** New Supabase projects issue ES256 tokens, not RS256. `middleware/auth.js` must accept both, and the JWKS URI must be `{SUPABASE_URL}/auth/v1/.well-known/jwks.json` (not `/auth/v1/jwks`).
-
-**QA didn't run the browser tests.** The Playwright MCP server isn't registered under the name `playwright`. Run `claude mcp list` to check, then register it and re-spawn `qa-engineer`.
-
-**`node seed.js` says "relation does not exist".** `DATABASE_URL` is wrong. Get it from Settings → Database → Connection string → URI, Session mode, port 5432. It looks like `postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres`.
-
----
-
-## What's not in v1
-
-Deliberate cuts, tracked in [plan.md](plan.md) as v2 candidates:
-
-- Multiple stacks (Next.js, Python/Django, Vue)
-- Deployment automation — Sprint Zero produces code, you deploy it
-- Multi-user collaboration in the generated product
-- Design system integration — the generated UI is utilitarian
-- Payment / Stripe integration
-- File upload beyond what Supabase gives you out of the box
-- A hosted version of Sprint Zero itself
-
----
-
-## Status
-
-- Phase 1 — Foundation — complete
-- Phase 2 — Scoping and discovery layer — complete
-- Phase 3 — Build layer — complete
-- Phase 4 — Kickoff orchestrator — complete
-- Phase 5 — Mini Twenty worked example — not started
-- Phase 6 — Polish for launch — not started
-
-See [plan.md](plan.md) for the full roadmap.
-
----
-
-## Authors
-
-- **[Yousuf Alvi](https://github.com/yousuf-alvi)** · [LinkedIn](https://www.linkedin.com/in/yousufalvi/) — original author
-- **[Hamza Farooq](https://www.linkedin.com/in/hamzafarooq/)** — course integration ([Enterprise RAG & Multi-Agent Applications](https://maven.com/boring-bot/advanced-llm))
-
-Originally published at [yousuf-labs/sprint-zero](https://github.com/yousuf-labs/sprint-zero).
+The scaffold produced the initial `client/` + `server/` + Supabase wiring and the documents in `docs/`. The Career Vault, the RAG-grounded tailoring, the ReAct agent harness and LLM router, and the Interview Studio are Callback's own build on top of that foundation.
 
 MIT licensed. See [LICENSE](LICENSE).
