@@ -47,11 +47,14 @@ async function getProfileContent(db, userId) {
 // Jobs collection
 // ---------------------------------------------------------------------------
 
-// GET /api/jobs — list the user's jobs.
+// GET /api/jobs — list the user's jobs, each annotated with its latest fit
+// score and whether it has a tailored resume, so the board can show that at a
+// glance without opening every job. Two small extra reads (scores, resumes)
+// scoped to the user — no per-job round-trips.
 router.get('/', async (req, res) => {
   try {
     const db = userClient(req.accessToken);
-    const { data, error } = await db
+    const { data: jobs, error } = await db
       .from('jobs')
       .select('id, title, company, description, url, status, created_at')
       .eq('user_id', req.user.id)
@@ -61,7 +64,34 @@ router.get('/', async (req, res) => {
       console.error('GET /api/jobs:', error.message);
       return serverError(res);
     }
-    return res.status(200).json(data || []);
+
+    // Latest score per job (scores are append-only, so newest wins) and the set
+    // of jobs that have a tailored resume.
+    const [scoresRes, resumesRes] = await Promise.all([
+      db
+        .from('scores')
+        .select('job_id, value, created_at')
+        .eq('user_id', req.user.id)
+        .order('created_at', { ascending: false }),
+      db.from('resumes').select('job_id').eq('user_id', req.user.id),
+    ]);
+    if (scoresRes.error || resumesRes.error) {
+      console.error('GET /api/jobs annotate:', (scoresRes.error || resumesRes.error).message);
+      return serverError(res);
+    }
+
+    const latestScore = new Map();
+    for (const s of scoresRes.data || []) {
+      if (!latestScore.has(s.job_id)) latestScore.set(s.job_id, s.value); // first = newest
+    }
+    const tailored = new Set((resumesRes.data || []).map((r) => r.job_id));
+
+    const annotated = (jobs || []).map((j) => ({
+      ...j,
+      score: latestScore.has(j.id) ? latestScore.get(j.id) : null,
+      tailored: tailored.has(j.id),
+    }));
+    return res.status(200).json(annotated);
   } catch (err) {
     console.error('GET /api/jobs:', err.message);
     return serverError(res);

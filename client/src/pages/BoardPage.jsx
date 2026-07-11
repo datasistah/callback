@@ -13,16 +13,44 @@ const COLUMNS = [
 ]
 const STATUSES = COLUMNS.map((c) => c.key)
 
+// Colour the fit-score chip by band, matching ScoreCard's thresholds.
+function scoreChipClass(value) {
+  if (value >= 80) return 'bg-emerald-500/15 text-emerald-300'
+  if (value >= 55) return 'bg-amber-500/15 text-amber-300'
+  return 'bg-red-500/15 text-red-300'
+}
+
 function JobCard({ job, onStatusChange, onDelete, busy }) {
+  const hasScore = typeof job.score === 'number'
   return (
     <div className="rounded-lg border border-border bg-surface p-3 shadow-sm transition hover:border-accent/40">
-      <Link
-        to={`/app/jobs/${job.id}`}
-        className="block text-sm font-semibold text-ink hover:text-accent-hover"
-      >
-        {job.title}
-      </Link>
+      <div className="flex items-start justify-between gap-2">
+        <Link
+          to={`/app/jobs/${job.id}`}
+          className="block text-sm font-semibold text-ink hover:text-accent-hover"
+        >
+          {job.title}
+        </Link>
+        {hasScore && (
+          <span
+            data-testid={`job-score-${job.id}`}
+            title={`Fit score: ${job.score}/100`}
+            className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${scoreChipClass(job.score)}`}
+          >
+            {job.score}
+          </span>
+        )}
+      </div>
       <p className="mt-0.5 text-xs text-muted">{job.company}</p>
+
+      {job.tailored && (
+        <span
+          data-testid={`job-tailored-${job.id}`}
+          className="mt-2 inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent-hover"
+        >
+          ✎ Tailored
+        </span>
+      )}
 
       <div className="mt-3 flex items-center gap-2">
         <select
@@ -144,9 +172,16 @@ export default function BoardPage() {
       ) : jobs.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border bg-surface/40 py-20 text-center">
           <p className="text-lg font-medium text-ink">No jobs yet</p>
-          <p className="mt-2 text-sm text-muted">
-            Add your first job to start tailoring and scoring.
+          <p className="mx-auto mt-2 max-w-sm text-sm text-muted">
+            The quickest way in: upload your resume, point it at a job, and see the fit score jump
+            after tailoring.
           </p>
+          <Link
+            to="/app/start"
+            className="mt-5 inline-block rounded-md bg-accent px-5 py-2 text-sm font-medium text-white transition hover:bg-accent-hover"
+          >
+            Start here →
+          </Link>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
