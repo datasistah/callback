@@ -6,6 +6,7 @@ import cors from 'cors';
 import profileRouter from './routes/profile.js';
 import jobsRouter from './routes/jobs.js';
 import vaultRouter from './routes/vault.js';
+import interviewRouter from './routes/interview.js';
 import { providerStatus } from './harness/llm/index.js';
 import { embeddingMode } from './harness/embeddings.js';
 
@@ -28,6 +29,7 @@ app.get('/api/llm/status', (req, res) => {
 app.use('/api/profile', profileRouter);
 app.use('/api/jobs', jobsRouter);
 app.use('/api/vault', vaultRouter);
+app.use('/api/interview', interviewRouter);
 
 // 404 for any unmatched /api route, in the contract's error shape.
 app.use('/api', (req, res) => {

@@ -22,6 +22,7 @@ import {
   tailorResumeGrounded,
   tailorResumeGroundedFallback,
 } from '../../lib/ai.js';
+import { generateQuestionsGrounded, generateQuestionsFallback } from '../../lib/questions.js';
 
 // ── Minimal schema validation (zero dependencies) ──────────────────────────
 // params shape: { <name>: { type, required?, description? } }
@@ -155,6 +156,34 @@ export function createDefaultRegistry() {
     handler: async ({ bullets, items }) => {
       const provenance = await verifyGrounding(bullets, items);
       return { provenance };
+    },
+  });
+
+  registry.register({
+    name: 'question_gen',
+    description:
+      'Generate behavioral interview questions (STAR-eliciting) for a job from ' +
+      'its description and, optionally, the candidate\'s Career Vault items so ' +
+      'questions reference their real experience. Uses the LLM when a provider ' +
+      'is configured, otherwise a deterministic fallback. Returns { questions: ' +
+      '[{ text, competency, source }] } where source is a vault item id, "jd", or "core".',
+    params: {
+      job: {
+        type: 'object',
+        required: true,
+        description: 'The target job: { title, company, description }.',
+      },
+      items: {
+        type: 'array',
+        description: 'Optional Career Vault items to ground questions in the candidate\'s experience.',
+      },
+      count: { type: 'number', description: 'How many questions to generate (default 6, max 12).' },
+    },
+    handler: async ({ job, items, count }) => {
+      const questions = aiEnabled()
+        ? await generateQuestionsGrounded({ job, items: items || [], count })
+        : generateQuestionsFallback({ job, items: items || [], count });
+      return { questions };
     },
   });
 

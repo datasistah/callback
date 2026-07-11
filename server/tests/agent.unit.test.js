@@ -34,7 +34,7 @@ async function test(name, fn) {
 // ── Tool registry ──────────────────────────────────────────────────────────
 await test('registry lists the core tools', () => {
   const names = createDefaultRegistry().list().map((t) => t.name).sort();
-  assert.deepStrictEqual(names, ['check_grounding', 'score_resume', 'tailor_bullets', 'vault_search']);
+  assert.deepStrictEqual(names, ['check_grounding', 'question_gen', 'score_resume', 'tailor_bullets', 'vault_search']);
 });
 
 await test('validateArgs catches missing required and wrong types', () => {

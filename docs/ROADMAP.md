@@ -127,10 +127,40 @@ In `~/Documents/repos/multi-agent-course-sprint-zero`:
     for `vault_search`, pure tools work without it; logs to stderr only. Added `@modelcontextprotocol/sdk`.
     Tests: `server/tests/mcp.unit.test.js` (5/5 — real MCP Client over in-memory transport); also
     verified E2E against the stdio entrypoint via a child-process client.
-  - **Next:** Phase 3 (question-gen agent) — the first *new* agent built on this layer. Optional:
-    `ollama pull nomic-embed-text` for real embeddings; tune `GROUNDEDNESS_THRESHOLD` for the LLM
-    tailor path (the deterministic path grounds every bullet, so the amber "unverified" state only
-    appears on the LLM path).
+- **Phase 3 — DONE (uncommitted)**: JD-based interview question generation — the first *new*
+  agent built on the agentic layer, and the first flow to actually drive the **ReAct loop**
+  (`harness/agent/loop.js`), not just the orchestrator.
+  - `lib/questions.js`: behavioral (STAR-eliciting) question generation. LLM path
+    (`generateQuestionsGrounded`, task `question_gen`, returns JSON `{questions:[{text,competency,
+    source}]}`, falls back if the model returns nothing) + deterministic `generateQuestionsFallback`
+    that round-robins three pools — Career Vault-grounded, JD-skill, and role-agnostic competency
+    questions — so sensible questions come out with **no LLM at all**. `source` is a vault item id,
+    `'jd'`, or `'core'`.
+  - New tool `question_gen` in `harness/agent/registry.js` (params `job` req, `items?`, `count?`);
+    now the registry is 5 tools, published unchanged over MCP.
+  - `lib/interview.js` `generateInterviewQuestions(db, {job, count, complete})`: model configured →
+    runs the **ReAct loop** over `vault_search`+`question_gen`; the authoritative structured
+    questions are read from the recorded `question_gen` observation in the trace (loop drives *tool
+    selection*, tool owns the output shape). No model → deterministic direct tool calls with
+    best-effort vault grounding. Returns `mode: agentic | agentic-fallback | deterministic`.
+  - Migration `003_interview.sql`: `interview_sessions` (user/job scoped, records `mode`) +
+    `questions` (position-ordered, `competency`, `source`), both RLS owner-scoped.
+  - Routes `routes/interview.js` (mounted `/api/interview`): `POST/GET/DELETE /sessions[/:id]`
+    (persist a session + its questions for a saved job) and stateless `POST /preview` (generate from
+    an ad-hoc JD, mirrors `/api/vault/search`).
+  - Tests: `server/tests/interview.unit.test.js` (10/10 hermetic — deterministic generator incl. a
+    dedup/termination regression, the `question_gen` tool, the deterministic + injected-completer
+    ReAct + fallback agent paths). Agent/MCP registry-name tests updated to 5 tools. All suites green
+    (interview 10, agent 12, mcp 5, vault 7).
+  - **Bug found + fixed during verify:** `generateQuestionsFallback`'s round-robin terminated on a
+    total that counted duplicates, so colliding question texts (real vault items do collide) spun a
+    synchronous infinite loop and hung the request. Loop is now index-bounded; regression test added.
+  - Verified E2E against live Supabase (demo login, deterministic path): preview, persist a
+    5-question session (ordered, first bullet grounded in a real vault item id), GET/list, 400 on
+    missing `job_id`, 204 delete with question cascade, 404 after — no server errors.
+  - **Next:** Phase 4 (Interview Studio + swappable voice) — video capture + transcript and the
+    `webspeech`/`realtime` voice seam; a frontend to run these sessions. Optional: `ollama pull
+    qwen2.5:3b` to exercise the `agentic` (model-driven) path end-to-end.
 
 ## Phases (planned)
 
@@ -147,8 +177,8 @@ In `~/Documents/repos/multi-agent-course-sprint-zero`:
    - **MCP tool layer:** wrap the tool registry behind an MCP server (JS SDK,
      `@modelcontextprotocol/sdk`) so tools are consumable internally now and by external agents
      later. `GET /api/llm/status` reports the agentic/MCP mode.
-3. **JD-based interview question generation** (`questionGenerator` agent/tool; `interview_sessions`/
-   `questions` tables). First consumer of the new agent loop.
+3. **JD-based interview question generation** (`question_gen` tool + `lib/interview.js` agent;
+   `interview_sessions`/`questions` tables) — DONE (see Status). First flow to drive the ReAct loop.
 4. **Interview Studio + swappable voice** — video capture + transcript (getUserMedia/MediaRecorder).
    - **Voice provider seam** mirroring the LLM router: `webspeech` (browser STT+TTS, $0 default)
      and an opt-in `realtime` provider (OpenAI `gpt-realtime-2.1-mini` or Gemini Live —
