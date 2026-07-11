@@ -205,16 +205,35 @@ In `~/Documents/repos/multi-agent-course-sprint-zero`:
 7. **Product hardening** — guardrails (Module 4 / Llama Guard) on untrusted input/output, per-user
    cost caps + rate limiting, observability/tracing, billing. Gate before public/customer launch.
 
-## Local LLM setup (free path)
+## LLM setup (free paths)
 
+**Local dev — Ollama (offline, private):**
 ```
 brew install ollama
 ollama pull qwen2.5:3b      # or a smaller 1.5b for weaker hardware
+ollama pull nomic-embed-text
 # in server/.env:
 OLLAMA_ENABLED=1
 OLLAMA_MODEL=qwen2.5:3b
+OLLAMA_EMBED_MODEL=nomic-embed-text
 ```
 Then `curl localhost:3001/api/llm/status` should show ollama configured. No key = mocks.
+
+**Deploy — OpenRouter free tier (hosted, $0, no Ollama):** Ollama is local-only —
+you don't deploy it (an always-on model box costs more than pay-per-token). For a
+deployed app, set a `:free` model and drop Ollama:
+```
+# on the deploy host:
+OPENROUTER_API_KEY=sk-or-...
+OPENROUTER_MODEL=meta-llama/llama-3.3-70b-instruct:free   # confirm on openrouter.ai/models
+OLLAMA_ENABLED=0            # embeddings fall back to the built-in deterministic embedder
+OLLAMA_EMBED_MODEL=
+```
+Chat/`question_gen` route to OpenRouter; the vault uses the deterministic embedder
+(free, always works). **Seed and serve with the same embedder** — re-run `node seed.js`
+with Ollama off so vault + query embeddings share one space. When free-tier limits
+bite, switch to Claude Haiku 4.5 (`ANTHROPIC_API_KEY` + `CALLBACK_LLM_PROVIDER=anthropic`),
+~a fraction of a cent per session. Full walkthrough: `docs/llm-setup.md`.
 
 ## Guardrails (don't break)
 
