@@ -3,6 +3,14 @@ import { useSession } from '../auth/SessionProvider.jsx'
 import Reveal from './Reveal.jsx'
 import ScorePreview from './ScorePreview.jsx'
 import InterviewPreview from './InterviewPreview.jsx'
+import {
+  VaultIcon,
+  TailorIcon,
+  TargetIcon,
+  MicIcon,
+  BoardIcon,
+  BoltIcon,
+} from './icons.jsx'
 
 function Wordmark() {
   return (
@@ -134,11 +142,17 @@ export default function LandingPage() {
           </Reveal>
           <div className="mt-14 grid items-start gap-8 lg:grid-cols-2">
             <Reveal>
-              <p className="mb-3 text-sm font-semibold text-accent-hover">◎ Score the fit</p>
+              <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-accent-hover">
+                <TargetIcon className="h-4 w-4" />
+                Score the fit
+              </p>
               <ScorePreview />
             </Reveal>
             <Reveal delay={120}>
-              <p className="mb-3 text-sm font-semibold text-accent-hover">🎙 Grade the interview</p>
+              <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-accent-hover">
+                <MicIcon className="h-4 w-4" />
+                Grade the interview
+              </p>
               <InterviewPreview />
             </Reveal>
           </div>
@@ -160,32 +174,32 @@ export default function LandingPage() {
           <div className="mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
             {[
               {
-                icon: '❑',
+                Icon: VaultIcon,
                 title: 'Career Vault',
                 desc: 'Keep your real accomplishments in one longitudinal record. Every tailored bullet and interview question is grounded in — and cites — an item here.',
               },
               {
-                icon: '✎',
+                Icon: TailorIcon,
                 title: 'Tailor in minutes',
                 desc: 'Generate a resume and cover letter shaped to one specific job, drawn from your vault with provenance you can trust.',
               },
               {
-                icon: '◎',
+                Icon: TargetIcon,
                 title: 'Score the fit',
                 desc: 'A 0–100 match score with matched and missing keywords tells you what to fix before you apply.',
               },
               {
-                icon: '🎙',
+                Icon: MicIcon,
                 title: 'Practice the interview',
                 desc: 'Behavioral STAR questions generated from the job and grounded in your vault — read aloud, with your spoken answers recorded and transcribed.',
               },
               {
-                icon: '▥',
+                Icon: BoardIcon,
                 title: 'Track the pipeline',
                 desc: 'Move every job from Bookmarked to Applied to Interviewing to Offer on one board.',
               },
               {
-                icon: '⚡',
+                Icon: BoltIcon,
                 title: 'Free to run',
                 desc: 'Runs on free and local models — no credits, no tiers, every feature open to every signed-in user.',
               },
@@ -195,8 +209,8 @@ export default function LandingPage() {
                 delay={(i % 3) * 90}
                 className="group rounded-xl border border-border bg-surface/50 p-6 transition duration-300 hover:-translate-y-1 hover:border-accent/50 hover:shadow-xl hover:shadow-accent/5"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/15 text-xl text-accent-hover transition group-hover:scale-110">
-                  {f.icon}
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/15 text-accent-hover transition group-hover:scale-110">
+                  <f.Icon className="h-5 w-5" />
                 </div>
                 <h3 className="mt-4 text-lg font-semibold">{f.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">
