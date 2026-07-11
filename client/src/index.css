@@ -16,3 +16,60 @@ body {
   color: #e8ecf3;
   background: #0b0f17;
 }
+
+/* ---------------------------------------------------------------------------
+   Landing-page motion: scroll reveals, floating depth, glow, typewriter caret.
+   All gated behind prefers-reduced-motion so the page is fully usable (and
+   static) for anyone who opts out of animation.
+   --------------------------------------------------------------------------- */
+@keyframes cb-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+@keyframes cb-glow {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 0.65; transform: scale(1.08); }
+}
+@keyframes cb-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+@keyframes cb-pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(129, 140, 248, 0.45); }
+  70% { box-shadow: 0 0 0 12px rgba(129, 140, 248, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(129, 140, 248, 0); }
+}
+
+/* Scroll reveal: hidden until .is-visible is toggled by an IntersectionObserver. */
+.cb-reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+  will-change: opacity, transform;
+}
+.cb-reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+.cb-float { animation: cb-float 6s ease-in-out infinite; }
+.cb-glow { animation: cb-glow 7s ease-in-out infinite; }
+.cb-pulse-ring { animation: cb-pulse-ring 1.6s ease-out infinite; }
+.cb-caret {
+  display: inline-block;
+  width: 0.5ch;
+  animation: cb-blink 1s step-end infinite;
+  color: #818cf8;
+}
+
+/* Smooth fills for the animated meters/gauges (width + stroke sweep). */
+.cb-bar-fill { transition: width 1.1s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.cb-ring { transition: stroke-dashoffset 1.3s cubic-bezier(0.2, 0.7, 0.2, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .cb-reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .cb-float, .cb-glow, .cb-pulse-ring, .cb-caret { animation: none !important; }
+  .cb-bar-fill, .cb-ring { transition: none !important; }
+}
+
+html { scroll-behavior: smooth; }

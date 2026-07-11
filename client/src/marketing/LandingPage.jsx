@@ -1,5 +1,8 @@
 import { Link } from 'react-router-dom'
 import { useSession } from '../auth/SessionProvider.jsx'
+import Reveal from './Reveal.jsx'
+import ScorePreview from './ScorePreview.jsx'
+import InterviewPreview from './InterviewPreview.jsx'
 
 function Wordmark() {
   return (
@@ -68,9 +71,24 @@ export default function LandingPage() {
       </header>
 
       {/* Hero */}
-      <section className="mx-auto max-w-[1200px] px-6 py-24 text-center">
+      <section className="relative overflow-hidden px-6 py-24 text-center">
+        {/* Ambient glow blobs for depth. */}
+        <div
+          aria-hidden
+          className="cb-glow pointer-events-none absolute -top-24 left-1/2 h-[420px] w-[720px] -translate-x-1/2 rounded-full bg-accent/25 blur-[120px]"
+        />
+        <div
+          aria-hidden
+          className="cb-glow pointer-events-none absolute top-40 right-0 h-[320px] w-[420px] rounded-full bg-emerald-500/15 blur-[120px]"
+          style={{ animationDelay: '2s' }}
+        />
+
+        <div className="relative mx-auto max-w-[1200px]">
         <h1 className="mx-auto max-w-3xl text-5xl font-bold leading-tight tracking-tight sm:text-6xl">
-          Tailor the resume. Rehearse the interview. Land the callback.
+          Tailor the resume. Rehearse the interview.{' '}
+          <span className="bg-gradient-to-r from-accent-hover via-indigo-400 to-emerald-400 bg-clip-text text-transparent">
+            Land the callback.
+          </span>
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-lg text-muted">
           Callback turns one saved job into a vault-grounded resume, a matching
@@ -96,39 +114,33 @@ export default function LandingPage() {
           )}
         </div>
 
-        {/* Stylised product mockup — a pipeline board, no images. */}
-        <div className="mx-auto mt-16 max-w-4xl rounded-xl border border-border bg-surface p-4 shadow-sm">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              { label: 'Bookmarked', count: 4, tone: 'bg-slate-500/30 text-slate-200' },
-              { label: 'Applied', count: 3, tone: 'bg-accent/30 text-accent-hover' },
-              { label: 'Interviewing', count: 2, tone: 'bg-amber-500/25 text-amber-200' },
-              { label: 'Offer', count: 1, tone: 'bg-emerald-500/25 text-emerald-200' },
-            ].map((col) => (
-              <div key={col.label} className="rounded-lg bg-bg p-3 text-left">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-semibold text-muted">
-                    {col.label}
-                  </span>
-                  <span className={`rounded-full px-2 text-xs ${col.tone}`}>
-                    {col.count}
-                  </span>
-                </div>
-                <div className="space-y-2">
-                  {Array.from({ length: col.count > 2 ? 2 : col.count }).map(
-                    (_, i) => (
-                      <div
-                        key={i}
-                        className="rounded-md border border-border bg-surface-hover p-2"
-                      >
-                        <div className="h-2 w-3/4 rounded bg-border" />
-                        <div className="mt-1.5 h-2 w-1/2 rounded bg-border/60" />
-                      </div>
-                    )
-                  )}
-                </div>
-              </div>
-            ))}
+        {/* Live product preview — the real scoring card, animated. */}
+        <div className="cb-float mx-auto mt-16 max-w-xl">
+          <ScorePreview />
+        </div>
+        <p className="mt-5 text-xs text-muted">Live preview — this is the actual fit score in action.</p>
+        </div>
+      </section>
+
+      {/* See it in action — animated previews of scoring + interview grading */}
+      <section className="border-t border-border bg-surface/20">
+        <div className="mx-auto max-w-[1200px] px-6 py-24">
+          <Reveal className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight">See it in action</h2>
+            <p className="mt-4 text-muted">
+              Score any resume against a job, then rehearse the interview out loud and get graded
+              on your STAR structure — scroll to watch both work.
+            </p>
+          </Reveal>
+          <div className="mt-14 grid items-start gap-8 lg:grid-cols-2">
+            <Reveal>
+              <p className="mb-3 text-sm font-semibold text-accent-hover">◎ Score the fit</p>
+              <ScorePreview />
+            </Reveal>
+            <Reveal delay={120}>
+              <p className="mb-3 text-sm font-semibold text-accent-hover">🎙 Grade the interview</p>
+              <InterviewPreview />
+            </Reveal>
           </div>
         </div>
       </section>
@@ -136,7 +148,7 @@ export default function LandingPage() {
       {/* Feature grid — the full product, not just resumes */}
       <section id="features" className="border-t border-border">
         <div className="mx-auto max-w-[1200px] px-6 py-24">
-          <div className="mx-auto max-w-2xl text-center">
+          <Reveal className="mx-auto max-w-2xl text-center">
             <h2 className="text-3xl font-bold tracking-tight">
               One place for the whole application
             </h2>
@@ -144,7 +156,7 @@ export default function LandingPage() {
               From your career history to the resume, the score, and the
               interview you rehearse out loud.
             </p>
-          </div>
+          </Reveal>
           <div className="mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
             {[
               {
@@ -177,19 +189,20 @@ export default function LandingPage() {
                 title: 'Free to run',
                 desc: 'Runs on free and local models — no credits, no tiers, every feature open to every signed-in user.',
               },
-            ].map((f) => (
-              <div
+            ].map((f, i) => (
+              <Reveal
                 key={f.title}
-                className="rounded-xl border border-border bg-surface/50 p-6 transition hover:border-accent/40"
+                delay={(i % 3) * 90}
+                className="group rounded-xl border border-border bg-surface/50 p-6 transition duration-300 hover:-translate-y-1 hover:border-accent/50 hover:shadow-xl hover:shadow-accent/5"
               >
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/15 text-xl text-accent-hover">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/15 text-xl text-accent-hover transition group-hover:scale-110">
                   {f.icon}
                 </div>
                 <h3 className="mt-4 text-lg font-semibold">{f.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-muted">
                   {f.desc}
                 </p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -219,15 +232,15 @@ export default function LandingPage() {
                 n: '4',
                 text: 'Rehearse the interview out loud — job-specific STAR questions, read aloud and transcribed.',
               },
-            ].map((s) => (
-              <div key={s.n} className="text-center">
-                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white">
+            ].map((s, i) => (
+              <Reveal key={s.n} delay={i * 110} className="text-center">
+                <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-accent to-indigo-700 text-sm font-semibold text-white shadow-lg shadow-accent/20">
                   {s.n}
                 </div>
                 <p className="mt-4 text-sm leading-relaxed text-muted">
                   {s.text}
                 </p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
@@ -255,8 +268,12 @@ export default function LandingPage() {
       {/* Final CTA */}
       <section className="border-t border-border">
         <div className="mx-auto max-w-[1200px] px-6 py-24">
-          <div className="rounded-2xl border border-border bg-gradient-to-br from-surface to-bg px-6 py-16 text-center">
-            <h2 className="text-4xl font-bold tracking-tight text-ink">
+          <Reveal className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-surface to-bg px-6 py-16 text-center">
+            <div
+              aria-hidden
+              className="cb-glow pointer-events-none absolute -bottom-24 left-1/2 h-72 w-[520px] -translate-x-1/2 rounded-full bg-accent/20 blur-[100px]"
+            />
+            <h2 className="relative text-4xl font-bold tracking-tight text-ink">
               Ready to ship better applications?
             </h2>
             <p className="mx-auto mt-4 max-w-md text-muted">
@@ -269,7 +286,7 @@ export default function LandingPage() {
             >
               {ctaLabel}
             </Link>
-          </div>
+          </Reveal>
         </div>
       </section>
 
