@@ -72,6 +72,10 @@ export function createApi(accessToken) {
     getJob: (id) => request(`/jobs/${id}`, { ...auth }),
     createJob: (job) =>
       request('/jobs', { method: 'POST', body: job, ...auth }),
+    // Read a job posting from a link → { title, company, description, url }.
+    // Does not persist; the caller reviews/edits, then createJob saves.
+    importJobFromUrl: (url) =>
+      request('/jobs/import-url', { method: 'POST', body: { url }, ...auth }),
     updateJob: (id, fields) =>
       request(`/jobs/${id}`, { method: 'PUT', body: fields, ...auth }),
     updateJobStatus: (id, status) =>

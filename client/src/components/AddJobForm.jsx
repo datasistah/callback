@@ -1,9 +1,13 @@
 import { useState } from 'react'
 import ErrorBanner from './ErrorBanner.jsx'
+import { useApi } from '../api/client.js'
 
 // Add-job form. Field `name` attributes match the API contract (title, company,
-// description, url). Calls onCreate(job) which returns a promise.
+// description, url). Calls onCreate(job) which returns a promise. Also supports
+// importing a posting from a link: paste a URL, click Fetch, and the title /
+// company / description prefill for review before saving.
 export default function AddJobForm({ onCreate }) {
+  const api = useApi()
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState('')
   const [company, setCompany] = useState('')
@@ -12,6 +16,8 @@ export default function AddJobForm({ onCreate }) {
   const [touched, setTouched] = useState({})
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [importing, setImporting] = useState(false)
+  const [importNote, setImportNote] = useState('')
 
   const titleValid = title.trim().length > 0
   const companyValid = company.trim().length > 0
@@ -25,6 +31,31 @@ export default function AddJobForm({ onCreate }) {
     setUrl('')
     setTouched({})
     setError('')
+    setImportNote('')
+  }
+
+  const handleImport = async () => {
+    const link = url.trim()
+    setError('')
+    setImportNote('')
+    if (!link) {
+      setError('Paste a job posting link first.')
+      return
+    }
+    setImporting(true)
+    try {
+      const posting = await api.importJobFromUrl(link)
+      // Prefill for review — never overwrite text the user already typed.
+      if (posting.title) setTitle((t) => t || posting.title)
+      if (posting.company) setCompany((c) => c || posting.company)
+      if (posting.description) setDescription((d) => d || posting.description)
+      setTouched({ title: true, company: true, description: true })
+      setImportNote('Imported — review the details below, then save.')
+    } catch (err) {
+      setError(err.message || 'Couldn\'t read that link — fill the details in manually.')
+    } finally {
+      setImporting(false)
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -87,6 +118,32 @@ export default function AddJobForm({ onCreate }) {
 
       <ErrorBanner message={error} className="mb-4" />
 
+      <div className="mb-4 rounded-md border border-border bg-bg/40 p-3">
+        <label htmlFor="url" className="block text-sm font-medium text-ink">
+          Import from a link <span className="text-muted">(Greenhouse, Lever, or any posting)</span>
+        </label>
+        <div className="mt-1 flex gap-2">
+          <input
+            id="url"
+            name="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            className={`${inputClass} mt-0 flex-1`}
+            placeholder="https://boards.greenhouse.io/acme/jobs/123456"
+          />
+          <button
+            type="button"
+            onClick={handleImport}
+            data-testid="import-job-url"
+            disabled={importing || !url.trim()}
+            className="shrink-0 rounded-md border border-accent px-4 py-2 text-sm font-medium text-accent transition hover:bg-accent hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {importing ? 'Fetching…' : 'Fetch'}
+          </button>
+        </div>
+        {importNote && <p className="mt-2 text-xs text-emerald-400">{importNote}</p>}
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-ink">
@@ -125,20 +182,6 @@ export default function AddJobForm({ onCreate }) {
             <p className="mt-1 text-xs text-red-400">Company is required.</p>
           )}
         </div>
-      </div>
-
-      <div className="mt-4">
-        <label htmlFor="url" className="block text-sm font-medium text-ink">
-          Job URL <span className="text-muted">(optional)</span>
-        </label>
-        <input
-          id="url"
-          name="url"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          className={inputClass}
-          placeholder="https://company.com/careers/role"
-        />
       </div>
 
       <div className="mt-4">

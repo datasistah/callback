@@ -13,6 +13,7 @@ import {
   generateCoverLetterFallback,
 } from '../lib/ai.js';
 import { buildTailoredResume } from '../lib/tailor.js';
+import { fetchJobFromUrl, ImportError } from '../lib/jobimport.js';
 
 const router = express.Router();
 router.use(requireAuth);
@@ -99,6 +100,28 @@ router.post('/', async (req, res) => {
     return res.status(201).json(data);
   } catch (err) {
     console.error('POST /api/jobs:', err.message);
+    return serverError(res);
+  }
+});
+
+// POST /api/jobs/import-url — read a job posting from a link so the user can add
+// it to the board without copy-pasting. Returns { title, company, description,
+// url } for the client to review and edit; it does NOT persist — saving still
+// goes through POST '/'. Deterministic (no LLM); degrades to a clear message the
+// UI turns into "paste the details manually".
+router.post('/import-url', async (req, res) => {
+  const { url } = req.body || {};
+  if (typeof url !== 'string' || url.trim() === '') {
+    return sendError(res, 400, 'validation_error', 'A url is required.');
+  }
+  try {
+    const posting = await fetchJobFromUrl(url.trim());
+    return res.json(posting);
+  } catch (err) {
+    if (err instanceof ImportError) {
+      return sendError(res, err.status, err.code, err.message);
+    }
+    console.error('POST /api/jobs/import-url:', err.message);
     return serverError(res);
   }
 });
