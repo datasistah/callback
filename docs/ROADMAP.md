@@ -197,8 +197,34 @@ In `~/Documents/repos/multi-agent-course-sprint-zero`:
          and hollowed out the agentic path (was 2/5 grounded → now 5/5).
     - **Open item:** ~60s per agentic run (several sequential LLM calls over a growing transcript) —
       a Phase 4 latency optimization (streaming, fewer steps, or a smaller reasoning model).
-  - **Next:** Phase 4 (Interview Studio + swappable voice) — video capture + transcript and the
-    `webspeech`/`realtime` voice seam; a frontend to run these sessions.
+- **Phase 4 frontend — DONE (uncommitted)**: the Interview Studio — the first UI to run a live
+  interview session, plus the client-side voice seam that mirrors the server's LLM router.
+  - Voice seam `client/src/voice/`: `webspeech.js` ($0 default — `SpeechSynthesis` reads a
+    question aloud, `SpeechRecognition` streams a live transcript; every capability
+    feature-detected), `realtime.js` (opt-in premium stub, `configured:false` so it can never
+    be the default), `index.js` selects via `VITE_VOICE_PROVIDER` and falls back to webspeech
+    when the requested provider is unknown/unconfigured. Same shape as `TASK_PROVIDER`.
+  - `client/src/pages/InterviewStudioPage.jsx` (route `/app/jobs/:id/interview`, entry = a
+    "Practice interview" button on `JobDetailPage`): reuses the latest interview session for the
+    job if one exists (else a "Generate interview questions" CTA runs the agentic generator);
+    webcam preview via `getUserMedia`, per-question answer capture via `MediaRecorder` (in-memory
+    object URLs, revoked on unmount), TTS reads each question, live STT fills an editable
+    per-question transcript (also a manual-typing fallback when STT is unsupported). Question
+    nav + progress, competency badge, and a source chip that surfaces the grounding story
+    (vault-UUID → "Grounded in your Career Vault", `jd`, `core`). Degrades gracefully when
+    camera/mic/speech APIs are blocked or absent.
+  - API client `client/src/api/client.js`: `list/get/create/deleteInterviewSession` + `previewInterview`.
+  - **Verified E2E in-browser** (demo login, Northwind Sr ML Engineer job): "Generate" drove the
+    ReAct loop over OpenRouter → `mode:"agentic"`, 6/6 questions with real competencies + a mix of
+    JD and vault-grounded source chips; per-question transcript isolation holds across nav; reload
+    reuses the persisted session instantly (no regeneration); camera-blocked degradation renders
+    the right notice; prod build clean (97 modules). Camera capture itself is sandbox-blocked in
+    the preview pane — the "Enable camera" gesture path is unexercised there but wired.
+  - **Client-side only this session** (chosen scope): recordings/transcripts are in-memory. The
+    Phase 4→5 bridge is persisting answers (an `answers` table + routes) so STAR critique has
+    something to read. The `realtime` voice provider is a stub — wiring OpenAI Realtime / Gemini
+    Live is deferred and won't touch the Studio UI (that's the point of the seam).
+  - **Next:** persist answers (Phase 4→5 bridge), then Phase 5 (STAR critique + streamed feedback).
 
 ## Phases (planned)
 

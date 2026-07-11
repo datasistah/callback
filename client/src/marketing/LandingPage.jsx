@@ -51,11 +51,12 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="mx-auto max-w-[1200px] px-6 py-24 text-center">
         <h1 className="mx-auto max-w-3xl text-5xl font-bold leading-tight tracking-tight sm:text-6xl">
-          Tailor every application. Score every fit before you apply.
+          Tailor the resume. Rehearse the interview. Land the callback.
         </h1>
-        <p className="mx-auto mt-6 max-w-xl text-lg text-muted">
-          Callback turns one saved job into a tailored resume, a matching cover
-          letter, and a 0–100 match score that tells you what is still missing.
+        <p className="mx-auto mt-6 max-w-2xl text-lg text-muted">
+          Callback turns one saved job into a vault-grounded resume, a matching
+          cover letter, a 0–100 fit score, and a spoken mock interview — every
+          answer built from your real career history, so you walk in ready.
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
@@ -111,15 +112,29 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Three-up feature row */}
+      {/* Feature grid — the full product, not just resumes */}
       <section id="features" className="border-t border-border">
         <div className="mx-auto max-w-[1200px] px-6 py-24">
-          <div className="grid gap-10 sm:grid-cols-3">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight">
+              One place for the whole application
+            </h2>
+            <p className="mt-4 text-muted">
+              From your career history to the resume, the score, and the
+              interview you rehearse out loud.
+            </p>
+          </div>
+          <div className="mt-14 grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
             {[
+              {
+                icon: '❑',
+                title: 'Career Vault',
+                desc: 'Keep your real accomplishments in one longitudinal record. Every tailored bullet and interview question is grounded in — and cites — an item here.',
+              },
               {
                 icon: '✎',
                 title: 'Tailor in minutes',
-                desc: 'Generate a resume and cover letter shaped to one specific job, drawn from your base profile.',
+                desc: 'Generate a resume and cover letter shaped to one specific job, drawn from your vault with provenance you can trust.',
               },
               {
                 icon: '◎',
@@ -127,12 +142,25 @@ export default function LandingPage() {
                 desc: 'A 0–100 match score with matched and missing keywords tells you what to fix before you apply.',
               },
               {
+                icon: '🎙',
+                title: 'Practice the interview',
+                desc: 'Behavioral STAR questions generated from the job and grounded in your vault — read aloud, with your spoken answers recorded and transcribed.',
+              },
+              {
                 icon: '▥',
                 title: 'Track the pipeline',
                 desc: 'Move every job from Bookmarked to Applied to Interviewing to Offer on one board.',
               },
+              {
+                icon: '⚡',
+                title: 'Free to run',
+                desc: 'Runs on free and local models — no credits, no tiers, every feature open to every signed-in user.',
+              },
             ].map((f) => (
-              <div key={f.title}>
+              <div
+                key={f.title}
+                className="rounded-xl border border-border bg-surface/50 p-6 transition hover:border-accent/40"
+              >
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent/15 text-xl text-accent-hover">
                   {f.icon}
                 </div>
@@ -152,7 +180,7 @@ export default function LandingPage() {
           <h2 className="text-center text-3xl font-bold tracking-tight">
             How it works
           </h2>
-          <div className="mx-auto mt-12 grid max-w-4xl gap-10 sm:grid-cols-3">
+          <div className="mx-auto mt-12 grid max-w-5xl gap-10 sm:grid-cols-2 lg:grid-cols-4">
             {[
               {
                 n: '1',
@@ -160,11 +188,15 @@ export default function LandingPage() {
               },
               {
                 n: '2',
-                text: 'Tailor a resume and cover letter to that job from your base profile.',
+                text: 'Tailor a resume and cover letter to that job, grounded in your Career Vault.',
               },
               {
                 n: '3',
                 text: 'Get a match score and breakdown, then edit and re-score until it fits.',
+              },
+              {
+                n: '4',
+                text: 'Rehearse the interview out loud — job-specific STAR questions, read aloud and transcribed.',
               },
             ].map((s) => (
               <div key={s.n} className="text-center">

@@ -7,6 +7,7 @@ import SignupPage from './auth/SignupPage.jsx'
 import AppLayout from './pages/AppLayout.jsx'
 import BoardPage from './pages/BoardPage.jsx'
 import JobDetailPage from './pages/JobDetailPage.jsx'
+import InterviewStudioPage from './pages/InterviewStudioPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import VaultPage from './pages/VaultPage.jsx'
 
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="board" element={page(<BoardPage />)} />
         <Route path="vault" element={page(<VaultPage />)} />
         <Route path="jobs/:id" element={page(<JobDetailPage />)} />
+        <Route path="jobs/:id/interview" element={page(<InterviewStudioPage />)} />
         <Route path="profile" element={page(<ProfilePage />)} />
       </Route>
 

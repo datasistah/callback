@@ -120,6 +120,22 @@ export function createApi(accessToken) {
       request('/vault/build-from-profile', { method: 'POST', ...auth }),
     searchVault: (query) =>
       request('/vault/search', { method: 'POST', body: query, ...auth }),
+
+    // Interview prep — behavioral question generation (agentic ReAct loop).
+    listInterviewSessions: () =>
+      request('/interview/sessions', { ...auth }),
+    getInterviewSession: (id) =>
+      request(`/interview/sessions/${id}`, { ...auth }),
+    createInterviewSession: (jobId, count) =>
+      request('/interview/sessions', {
+        method: 'POST',
+        body: { job_id: jobId, ...(count ? { count } : {}) },
+        ...auth,
+      }),
+    deleteInterviewSession: (id) =>
+      request(`/interview/sessions/${id}`, { method: 'DELETE', ...auth }),
+    previewInterview: (job) =>
+      request('/interview/preview', { method: 'POST', body: job, ...auth }),
   }
 }
 

@@ -251,6 +251,13 @@ export default function JobDetailPage() {
         >
           {scoreState.busy ? 'Scoring…' : 'Score match'}
         </button>
+        <Link
+          to={`/app/jobs/${id}/interview`}
+          data-testid="practice-interview-button"
+          className="rounded-md border border-border bg-surface px-4 py-2 text-sm font-medium text-ink transition hover:bg-surface-hover"
+        >
+          Practice interview
+        </Link>
       </div>
 
       {/* Score is the centerpiece of the core loop. */}
