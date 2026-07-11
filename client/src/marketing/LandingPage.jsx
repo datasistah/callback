@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { useSession } from '../auth/SessionProvider.jsx'
 
 function Wordmark() {
   return (
@@ -10,6 +11,12 @@ function Wordmark() {
 
 export default function LandingPage() {
   const year = new Date().getFullYear()
+  // Route already-signed-in visitors into the app instead of asking them to log
+  // in again — the primary call to action becomes "Go to your board".
+  const { session } = useSession()
+  const loggedIn = Boolean(session)
+  const ctaTo = loggedIn ? '/app/board' : '/signup'
+  const ctaLabel = loggedIn ? 'Go to your board' : 'Get started'
 
   return (
     <div className="min-h-screen bg-bg text-ink">
@@ -30,20 +37,32 @@ export default function LandingPage() {
             >
               Pricing
             </a>
-            <Link
-              to="/login"
-              data-testid="nav-login"
-              className="text-sm font-medium text-muted hover:text-ink"
-            >
-              Log in
-            </Link>
-            <Link
-              to="/signup"
-              data-testid="nav-signup"
-              className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover"
-            >
-              Get started
-            </Link>
+            {loggedIn ? (
+              <Link
+                to="/app/board"
+                data-testid="nav-app"
+                className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover"
+              >
+                Go to app →
+              </Link>
+            ) : (
+              <>
+                <Link
+                  to="/login"
+                  data-testid="nav-login"
+                  className="text-sm font-medium text-muted hover:text-ink"
+                >
+                  Log in
+                </Link>
+                <Link
+                  to="/signup"
+                  data-testid="nav-signup"
+                  className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover"
+                >
+                  Get started
+                </Link>
+              </>
+            )}
           </div>
         </nav>
       </header>
@@ -60,19 +79,21 @@ export default function LandingPage() {
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
           <Link
-            to="/signup"
+            to={ctaTo}
             data-testid="hero-cta-signup"
             className="rounded-md bg-gradient-to-br from-accent to-indigo-700 px-7 py-3 text-base font-medium text-white shadow-sm transition hover:opacity-95"
           >
-            Get started — it's free
+            {loggedIn ? 'Go to your board →' : "Get started — it's free"}
           </Link>
-          <Link
-            to="/login"
-            data-testid="hero-login"
-            className="text-base font-medium text-muted hover:text-ink"
-          >
-            Log in →
-          </Link>
+          {!loggedIn && (
+            <Link
+              to="/login"
+              data-testid="hero-login"
+              className="text-base font-medium text-muted hover:text-ink"
+            >
+              Log in →
+            </Link>
+          )}
         </div>
 
         {/* Stylised product mockup — a pipeline board, no images. */}
@@ -242,11 +263,11 @@ export default function LandingPage() {
               Stop guessing whether your resume fits. Score it, fix it, then apply.
             </p>
             <Link
-              to="/signup"
+              to={ctaTo}
               data-testid="footer-cta-signup"
               className="mt-8 inline-block rounded-md bg-accent px-7 py-3 text-base font-medium text-white transition hover:bg-accent-hover"
             >
-              Get started
+              {ctaLabel}
             </Link>
           </div>
         </div>
