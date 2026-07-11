@@ -105,8 +105,8 @@ In `~/Documents/repos/multi-agent-course-sprint-zero`:
   - Verified end-to-end in-browser against the live backend (demo login, 10 seeded items load,
     tailor → 6/6 grounded provenance, create/delete round-trip, prod build clean). `.claude/launch.json`
     added for `server` (node) + `client` (vite) preview.
-- **Phase 2 agentic harness — DONE (step 1 of 3, committed `8710088`)**: tool registry +
-  agent loop + orchestrator in `server/harness/agent/`.
+- **Phase 2 agentic harness — DONE (steps 1–2, committed `8710088` + `7051253`)**: tool
+  registry + agent loop + orchestrator in `server/harness/agent/`, now published over MCP.
   - `registry.js`: typed `ToolRegistry` with zero-dep arg validation; core tools
     `vault_search`, `tailor_bullets`, `check_grounding`, `score_resume` wrap the existing lib
     functions. Handlers take `(args, ctx)` — `ctx.db` is the RLS-scoped client. This is the
@@ -120,8 +120,14 @@ In `~/Documents/repos/multi-agent-course-sprint-zero`:
     (`vault_search → tailor_bullets → check_grounding`); `buildTailoredResume` contract unchanged.
   - Tests: `server/tests/agent.unit.test.js` (12/12 hermetic); `vault.unit.test.js` still 7/7.
     Verified: module graph resolves, server boots clean, tailor route live (401 auth-guarded).
-  - **Next (Phase 2 remaining):** 2b — expose the registry over an MCP server (`@modelcontextprotocol/sdk`);
-    then Phase 3 (question-gen agent) becomes the first *new* agent built on this layer. Optional:
+  - **Step 2b (MCP) — DONE (`7051253`)**: `server/mcp/server.js` publishes the registry over the
+    Model Context Protocol (low-level `Server`; each tool's params → JSON Schema `inputSchema`;
+    `tools/call` runs `registry.run`; failures returned as `isError` results). `server/mcp/index.js`
+    is the stdio entrypoint (`npm run mcp`) — builds an RLS-scoped client from `CALLBACK_ACCESS_TOKEN`
+    for `vault_search`, pure tools work without it; logs to stderr only. Added `@modelcontextprotocol/sdk`.
+    Tests: `server/tests/mcp.unit.test.js` (5/5 — real MCP Client over in-memory transport); also
+    verified E2E against the stdio entrypoint via a child-process client.
+  - **Next:** Phase 3 (question-gen agent) — the first *new* agent built on this layer. Optional:
     `ollama pull nomic-embed-text` for real embeddings; tune `GROUNDEDNESS_THRESHOLD` for the LLM
     tailor path (the deterministic path grounds every bullet, so the amber "unverified" state only
     appears on the LLM path).
