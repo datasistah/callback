@@ -246,22 +246,21 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Social proof */}
+      {/* Pricing */}
       <section id="pricing" className="border-t border-border">
         <div className="mx-auto max-w-[1200px] px-6 py-20 text-center">
-          <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-            Trusted by teams at
-          </p>
-          <div className="mt-6 flex flex-wrap items-center justify-center gap-x-12 gap-y-4 text-lg font-semibold text-muted">
-            <span>Northwind</span>
-            <span>Acme</span>
-            <span>Globex</span>
-            <span>Initech</span>
-            <span>Hooli</span>
-          </div>
-          <p className="mt-8 text-sm text-muted">
-            Every feature is free for every signed-in user. No credits, no tiers.
-          </p>
+          <Reveal className="mx-auto max-w-xl">
+            <p className="text-xs font-semibold uppercase tracking-widest text-accent-hover">
+              Pricing
+            </p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-ink">
+              Free. Every feature.
+            </h2>
+            <p className="mt-4 text-muted">
+              Callback runs on free and local models — no credits, no tiers, no paywalled
+              features. Every tool is open to every signed-in user.
+            </p>
+          </Reveal>
         </div>
       </section>
 
