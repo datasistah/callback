@@ -94,20 +94,16 @@ fly secrets set \
 Leave the `OLLAMA_*` variables **unset** in production so embeddings stay
 deterministic and consistent with how you seeded (Step 2).
 
-## Step 5 — Deploy (pass the client's PUBLIC Supabase config as build args)
-
-Vite inlines the client's Supabase config at **build** time, so it goes in as
-`--build-arg`, not as a secret. Both values are safe to expose: the URL is
-public and the *publishable/anon* key is designed for browsers — every row is
-protected by Supabase Row-Level Security. **Never** pass the secret/service_role
-key as a build arg.
+## Step 5 — Deploy
 
 ```bash
-fly deploy \
-  --build-arg VITE_SUPABASE_URL="https://<ref>.supabase.co" \
-  --build-arg VITE_SUPABASE_PUBLISHABLE_KEY="<supabase publishable / anon key>"
-# VITE_API_BASE_URL defaults to "/api" (same origin) — no need to pass it.
+fly deploy
 ```
+
+That's it — **no build args needed.** The server injects the client's public
+config (Supabase URL + publishable/anon key) into the page at runtime from the
+same secrets you set in Step 4, so the frontend and backend are configured by
+one source. (The secret/service_role key is never sent to the browser.)
 
 ## Step 5b — Enable Google sign-in (Supabase + Google Cloud)
 

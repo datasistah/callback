@@ -14,10 +14,13 @@
 FROM node:22-slim AS client-build
 WORKDIR /app/client
 
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_PUBLISHABLE_KEY
-# Same-origin API path for the single-app deploy.
-ARG VITE_API_BASE_URL=/api
+# The client's Supabase config is injected at RUNTIME by the server (from its
+# env / Fly secrets), so no build args are required here — `fly deploy` needs no
+# --build-arg flags. These ARGs are kept only as an optional override for
+# baking values at build time; leave them unset for the normal runtime path.
+ARG VITE_SUPABASE_URL=""
+ARG VITE_SUPABASE_PUBLISHABLE_KEY=""
+ARG VITE_API_BASE_URL=""
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
     VITE_SUPABASE_PUBLISHABLE_KEY=$VITE_SUPABASE_PUBLISHABLE_KEY \
     VITE_API_BASE_URL=$VITE_API_BASE_URL

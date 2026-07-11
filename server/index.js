@@ -62,11 +62,31 @@ app.use('/api', (req, res) => {
 const clientDist = path.resolve(__dirname, '..', 'client', 'dist');
 const clientIndex = path.join(clientDist, 'index.html');
 if (fs.existsSync(clientIndex)) {
-  app.use(express.static(clientDist));
-  // SPA fallback: any non-/api GET that didn't match a static file returns the
-  // app shell. /api/* never reaches here — it's fully handled above.
+  // Inject the client's PUBLIC config (Supabase URL + publishable/anon key) into
+  // the page from RUNTIME env, so the deployed frontend is configured by the
+  // same Fly secrets as the server — no build-time args required. Both values
+  // are safe to expose (the URL is public; the anon key is protected by RLS).
+  // The secret key is NEVER included here.
+  const config = {
+    supabaseUrl: process.env.SUPABASE_URL || '',
+    supabasePublishableKey: process.env.SUPABASE_PUBLISHABLE_KEY || '',
+    apiBaseUrl: '/api',
+  };
+  // Escape "<" so the value can never break out of the <script> tag.
+  const configJson = JSON.stringify(config).replace(/</g, '\\u003c');
+  const rawIndex = fs.readFileSync(clientIndex, 'utf8');
+  const indexHtml = rawIndex.replace(
+    '</head>',
+    `<script>window.__CALLBACK_CONFIG__=${configJson}</script></head>`
+  );
+
+  // Serve hashed assets from disk, but NOT index.html (index: false) — every
+  // HTML response goes through our handler so it carries the injected config.
+  app.use(express.static(clientDist, { index: false }));
+  // SPA fallback: any non-/api GET returns the config-injected app shell.
+  // /api/* never reaches here — it's fully handled above.
   app.get('*', (req, res) => {
-    res.sendFile(clientIndex);
+    res.set('Content-Type', 'text/html').send(indexHtml);
   });
   console.log(`Serving built client from ${clientDist}`);
 }
