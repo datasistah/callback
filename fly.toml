@@ -1,0 +1,32 @@
+# Fly.io config for Callback — single-app deploy (API + static client).
+#
+# `fly launch` may rename the app / pick a region for you; edit both below to
+# match. Secrets (Supabase secret key, OpenRouter key) are NOT here — set them
+# with `fly secrets set` (see DEPLOY.md). The client's public Supabase config is
+# passed at build time via --build-arg, also documented in DEPLOY.md.
+app = "callback"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  # Scale to zero when idle to keep a demo cheap; Fly cold-starts on the next
+  # request. Set min_machines_running = 1 if you want to avoid cold starts.
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [[http_service.checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/api/health"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1

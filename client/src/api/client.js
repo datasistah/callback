@@ -1,7 +1,10 @@
 import { useMemo } from 'react'
 import { useSession } from '../auth/SessionProvider.jsx'
 
-const BASE_URL = 'http://localhost:3001/api'
+// API base URL. In the single-app production build this is set to a relative
+// '/api' (same origin as the served client — no CORS). In local dev it's unset,
+// so we default to the standalone backend on :3001 that `vite dev` talks to.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api'
 
 // An error that carries the parsed API error body and HTTP status, so pages can
 // render a consistent message and branch on status (e.g. 503 -> AI not configured).
