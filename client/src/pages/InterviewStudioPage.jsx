@@ -3,14 +3,16 @@ import { Link, useParams } from 'react-router-dom'
 import { useApi } from '../api/client.js'
 import Spinner from '../components/Spinner.jsx'
 import ErrorBanner from '../components/ErrorBanner.jsx'
+import AnswerScoreCard from '../components/AnswerScoreCard.jsx'
 import { getVoiceProvider } from '../voice/index.js'
 
 // Interview Studio — Phase 4. Run a behavioral interview against a job:
 // the browser reads each generated question aloud (TTS), captures a video answer
 // (getUserMedia + MediaRecorder), and streams a live transcript (STT). Voice
 // goes through the swappable provider seam (webspeech by default), so the whole
-// experience runs at $0 with no voice server. Recordings and transcripts live in
-// memory for this session — persistence is the bridge into Phase 5 (STAR critique).
+// experience runs at $0 with no voice server. Recordings live in memory for this
+// session; transcripts and their STAR grades (Phase 5) persist server-side, so a
+// candidate's answers and scores survive a reload. Video is never uploaded.
 
 function describe(err, fallback) {
   if (err?.status === 503) return 'AI key not configured'
@@ -75,6 +77,9 @@ export default function InterviewStudioPage() {
   const [elapsed, setElapsed] = useState(0)
   const [recordings, setRecordings] = useState({}) // qid -> { url }
   const [transcripts, setTranscripts] = useState({}) // qid -> string
+  const [grades, setGrades] = useState({}) // qid -> answer grade row
+  const [grading, setGrading] = useState(false)
+  const [gradeMsg, setGradeMsg] = useState('')
   const [interim, setInterim] = useState('')
   const [autoRead, setAutoRead] = useState(provider.ttsSupported)
   const [voiceNote, setVoiceNote] = useState('')
@@ -116,6 +121,16 @@ export default function InterviewStudioPage() {
         const full = await api.getInterviewSession(existing.id)
         setSession({ id: full.id, mode: full.mode })
         setQuestions(full.questions || [])
+        // Rehydrate persisted transcripts + grades, keyed by question id (which
+        // is the qid used everywhere below for saved questions).
+        const savedTranscripts = {}
+        const savedGrades = {}
+        for (const a of full.answers || []) {
+          if (a.transcript) savedTranscripts[a.question_id] = a.transcript
+          savedGrades[a.question_id] = a
+        }
+        setTranscripts(savedTranscripts)
+        setGrades(savedGrades)
       }
     } catch (err) {
       setLoadError(describe(err, 'Could not load this interview.'))
@@ -178,6 +193,11 @@ export default function InterviewStudioPage() {
       const created = await api.createInterviewSession(jobId)
       setSession({ id: created.id, mode: created.mode })
       setQuestions(created.questions || [])
+      // A regenerated session has brand-new question ids, so prior grades and
+      // transcripts no longer apply — start clean.
+      setGrades({})
+      setTranscripts({})
+      setGradeMsg('')
       setIndex(0)
       setGen({
         busy: false,
@@ -281,7 +301,31 @@ export default function InterviewStudioPage() {
     if (recording) stopRecording()
     provider.cancelSpeech?.()
     setInterim('')
+    setGradeMsg('')
     setIndex(next)
+  }
+
+  // ---- Score the current answer (STAR + relevance) --------------------------
+  // Grades the transcript for the current question and persists it server-side.
+  // Always returns a grade (LLM when a provider is configured, deterministic
+  // rubric otherwise), so this never hard-fails on a missing AI key.
+  const scoreAnswer = async () => {
+    const transcript = (transcripts[qid] || '').trim()
+    if (!session?.id || !current?.id) return
+    if (!transcript) {
+      setGradeMsg('Record or type an answer before scoring it.')
+      return
+    }
+    setGrading(true)
+    setGradeMsg('')
+    try {
+      const graded = await api.gradeInterviewAnswer(session.id, current.id, transcript)
+      setGrades((prev) => ({ ...prev, [qid]: graded }))
+    } catch (err) {
+      setGradeMsg(describe(err, 'Could not score this answer.'))
+    } finally {
+      setGrading(false)
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -500,6 +544,21 @@ export default function InterviewStudioPage() {
                 <p className="mt-1 text-sm italic text-muted">{interim}</p>
               )}
             </div>
+
+            {/* ---- Answer scoring (STAR + relevance) ----------------------- */}
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button
+                onClick={scoreAnswer}
+                disabled={grading || recording || !current?.id || !(transcripts[qid] || '').trim()}
+                data-testid="score-answer"
+                className="rounded-md bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {grading ? 'Scoring…' : grades[qid] ? 'Re-score answer' : 'Score my answer'}
+              </button>
+              <span className="text-xs text-muted">Grades your answer on STAR structure and relevance.</span>
+            </div>
+            {gradeMsg && <ErrorBanner message={gradeMsg} tone="error" className="mt-3" />}
+            {grades[qid] && <AnswerScoreCard grade={grades[qid]} />}
 
             {provider.ttsSupported && voices.length > 0 && (
               <div className="mt-4">

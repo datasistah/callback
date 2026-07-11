@@ -23,6 +23,7 @@ import {
   tailorResumeGroundedFallback,
 } from '../../lib/ai.js';
 import { generateQuestionsGrounded, generateQuestionsFallback } from '../../lib/questions.js';
+import { gradeAnswerGrounded, gradeAnswerFallback } from '../../lib/grade.js';
 
 // ── Minimal schema validation (zero dependencies) ──────────────────────────
 // params shape: { <name>: { type, required?, description? } }
@@ -194,6 +195,24 @@ export function createDefaultRegistry() {
       resumeContent: { type: 'string', required: true },
     },
     handler: async ({ jobDescription, resumeContent }) => computeScore(jobDescription, resumeContent),
+  });
+
+  registry.register({
+    name: 'grade_answer',
+    description:
+      "Grade a candidate's transcribed answer to a behavioral interview question " +
+      'on STAR structure (Situation/Task/Action/Result, each 0–25) and relevance ' +
+      '(0–100), with an overall 0–100 score and coaching feedback. Uses the LLM ' +
+      'when a provider is configured, otherwise a deterministic rubric. Returns ' +
+      '{ overall, star, relevance, feedback, mode }.',
+    params: {
+      question: { type: 'string', required: true, description: 'The interview question asked.' },
+      transcript: { type: 'string', required: true, description: "The candidate's transcribed answer." },
+    },
+    handler: async ({ question, transcript }) =>
+      aiEnabled()
+        ? gradeAnswerGrounded({ question, transcript })
+        : gradeAnswerFallback({ question, transcript }),
   });
 
   return registry;

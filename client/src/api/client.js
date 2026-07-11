@@ -140,6 +140,13 @@ export function createApi(accessToken) {
       request(`/interview/sessions/${id}`, { method: 'DELETE', ...auth }),
     previewInterview: (job) =>
       request('/interview/preview', { method: 'POST', body: job, ...auth }),
+    // Grade a transcribed answer to one of a session's questions (STAR + relevance).
+    gradeInterviewAnswer: (sessionId, questionId, transcript) =>
+      request(`/interview/sessions/${sessionId}/answers`, {
+        method: 'POST',
+        body: { question_id: questionId, transcript },
+        ...auth,
+      }),
   }
 }
 

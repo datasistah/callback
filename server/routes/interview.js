@@ -13,12 +13,15 @@ import { requireAuth } from '../middleware/auth.js';
 import { userClient } from '../supabase.js';
 import { sendError, notFoundJob, serverError } from '../lib/respond.js';
 import { generateInterviewQuestions } from '../lib/interview.js';
+import { gradeAnswer } from '../lib/grade.js';
 
 const router = express.Router();
 router.use(requireAuth);
 
 const SESSION_COLS = 'id, job_id, mode, created_at, updated_at';
 const QUESTION_COLS = 'id, session_id, position, text, competency, source, created_at';
+const ANSWER_COLS =
+  'id, session_id, question_id, transcript, overall, star, relevance, feedback, grade_mode, updated_at';
 
 // Fetch a job owned by the user, or null. Throws on a real DB error.
 async function getOwnedJob(db, userId, jobId) {
@@ -40,6 +43,19 @@ async function getSessionQuestions(db, userId, sessionId) {
     .eq('session_id', sessionId)
     .eq('user_id', userId)
     .order('position', { ascending: true });
+  if (error) throw error;
+  return data || [];
+}
+
+// Load a session's graded answers (one per answered question). Returned
+// alongside the questions so the studio rehydrates transcripts + scores on
+// reload — recordings themselves stay in the browser and are not persisted.
+async function getSessionAnswers(db, userId, sessionId) {
+  const { data, error } = await db
+    .from('answers')
+    .select(ANSWER_COLS)
+    .eq('session_id', sessionId)
+    .eq('user_id', userId);
   if (error) throw error;
   return data || [];
 }
@@ -124,7 +140,9 @@ router.post('/sessions', async (req, res) => {
       saved = qRes.data || [];
     }
 
-    return res.status(201).json({ ...session, questions: saved });
+    // A freshly generated session has no answers yet; include the key so the
+    // client can treat the create and fetch shapes uniformly.
+    return res.status(201).json({ ...session, questions: saved, answers: [] });
   } catch (err) {
     console.error('POST /api/interview/sessions:', err.message);
     return serverError(res);
@@ -147,10 +165,87 @@ router.get('/sessions/:id', async (req, res) => {
     }
     if (!sessionRes.data) return sendError(res, 404, 'not_found', 'Interview session not found.');
 
-    const questions = await getSessionQuestions(db, req.user.id, sessionRes.data.id);
-    return res.status(200).json({ ...sessionRes.data, questions });
+    const [questions, answers] = await Promise.all([
+      getSessionQuestions(db, req.user.id, sessionRes.data.id),
+      getSessionAnswers(db, req.user.id, sessionRes.data.id),
+    ]);
+    return res.status(200).json({ ...sessionRes.data, questions, answers });
   } catch (err) {
     console.error('GET /api/interview/sessions/:id:', err.message);
+    return serverError(res);
+  }
+});
+
+// POST /api/interview/sessions/:id/answers — grade a transcribed answer to one
+// of the session's questions and upsert it (one graded answer per question, so
+// re-recording overwrites). Body: { question_id, transcript }.
+// Grading uses the LLM when a provider is configured and a deterministic STAR
+// rubric otherwise, so it always returns a grade — never a 503.
+router.post('/sessions/:id/answers', async (req, res) => {
+  try {
+    const { question_id, transcript } = req.body || {};
+    if (typeof question_id !== 'string' || !question_id.trim()) {
+      return sendError(res, 400, 'validation_error', 'question_id is required.');
+    }
+    if (typeof transcript !== 'string' || !transcript.trim()) {
+      return sendError(res, 400, 'empty_transcript', 'Record or type an answer before scoring it.');
+    }
+
+    const db = userClient(req.accessToken);
+
+    // The question must belong to this session AND this user — this both scopes
+    // the write and gives us the question text to grade against.
+    const questionRes = await db
+      .from('questions')
+      .select('id, text')
+      .eq('id', question_id)
+      .eq('session_id', req.params.id)
+      .eq('user_id', req.user.id)
+      .maybeSingle();
+    if (questionRes.error) {
+      console.error('POST answers question lookup:', questionRes.error.message);
+      return serverError(res);
+    }
+    if (!questionRes.data) {
+      return sendError(res, 404, 'not_found', 'That question is not part of this interview session.');
+    }
+
+    let grade;
+    try {
+      grade = await gradeAnswer({ question: questionRes.data.text, transcript });
+    } catch (err) {
+      // gradeAnswer degrades to the deterministic rubric internally, so this is
+      // a genuine unexpected failure.
+      console.error('gradeAnswer:', err.message);
+      return sendError(res, 502, 'grading_failed', 'Scoring failed — try again.');
+    }
+
+    const { data, error } = await db
+      .from('answers')
+      .upsert(
+        {
+          session_id: req.params.id,
+          question_id: questionRes.data.id,
+          user_id: req.user.id,
+          transcript: transcript.trim(),
+          overall: grade.overall,
+          star: grade.star,
+          relevance: grade.relevance,
+          feedback: grade.feedback,
+          grade_mode: grade.mode,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'question_id' }
+      )
+      .select(ANSWER_COLS)
+      .single();
+    if (error) {
+      console.error('POST answers upsert:', error.message);
+      return serverError(res);
+    }
+    return res.status(201).json(data);
+  } catch (err) {
+    console.error('POST /api/interview/sessions/:id/answers:', err.message);
     return serverError(res);
   }
 });

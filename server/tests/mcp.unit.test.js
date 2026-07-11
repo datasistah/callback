@@ -43,7 +43,7 @@ await test('tools/list publishes the core registry with JSON Schemas', async () 
   const { client } = await connect();
   const { tools } = await client.listTools();
   const names = tools.map((t) => t.name).sort();
-  assert.deepStrictEqual(names, ['check_grounding', 'question_gen', 'score_resume', 'tailor_bullets', 'vault_search']);
+  assert.deepStrictEqual(names, ['check_grounding', 'grade_answer', 'question_gen', 'score_resume', 'tailor_bullets', 'vault_search']);
   const score = tools.find((t) => t.name === 'score_resume');
   assert.strictEqual(score.inputSchema.type, 'object');
   assert.deepStrictEqual(score.inputSchema.required.sort(), ['jobDescription', 'resumeContent']);
