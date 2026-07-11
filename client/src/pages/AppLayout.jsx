@@ -27,6 +27,9 @@ export default function AppLayout() {
               Call<span className="text-accent-hover">back</span>
             </Link>
             <nav className="flex items-center gap-6">
+              <NavLink to="/app/start" className={linkClass}>
+                Start here
+              </NavLink>
               <NavLink to="/app/board" className={linkClass}>
                 Board
               </NavLink>

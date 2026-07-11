@@ -5,6 +5,7 @@ import LandingPage from './marketing/LandingPage.jsx'
 import LoginPage from './auth/LoginPage.jsx'
 import SignupPage from './auth/SignupPage.jsx'
 import AppLayout from './pages/AppLayout.jsx'
+import StartHerePage from './pages/StartHerePage.jsx'
 import BoardPage from './pages/BoardPage.jsx'
 import JobDetailPage from './pages/JobDetailPage.jsx'
 import InterviewStudioPage from './pages/InterviewStudioPage.jsx'
@@ -35,6 +36,7 @@ export default function App() {
         }
       >
         <Route index element={<Navigate to="/app/board" replace />} />
+        <Route path="start" element={page(<StartHerePage />)} />
         <Route path="board" element={page(<BoardPage />)} />
         <Route path="vault" element={page(<VaultPage />)} />
         <Route path="jobs/:id" element={page(<JobDetailPage />)} />

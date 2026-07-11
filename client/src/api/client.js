@@ -114,6 +114,10 @@ export function createApi(accessToken) {
     scoreJob: (jobId) =>
       request(`/jobs/${jobId}/score`, { method: 'POST', ...auth }),
     getScore: (jobId) => request(`/jobs/${jobId}/score`, { ...auth }),
+    // "Before" score for the before/after comparison: scores the current resume
+    // (or base profile) against the job without tailoring.
+    scoreBaseline: (jobId) =>
+      request(`/jobs/${jobId}/score/baseline`, { method: 'POST', ...auth }),
 
     // Career Vault
     listVault: () => request('/vault', { ...auth }),

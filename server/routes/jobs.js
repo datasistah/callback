@@ -521,6 +521,52 @@ router.post('/:id/score', async (req, res) => {
   }
 });
 
+// POST /api/jobs/:id/score/baseline — the "before" score for the before/after
+// comparison. Scores the resume as it stands RIGHT NOW against the job, without
+// tailoring: the currently-saved tailored resume if one exists (so re-tailoring
+// shows the incremental gain), otherwise the base profile (so the first tailor
+// shows the lift over the untailored resume). Computed on the fly and NOT
+// stored — the job's canonical stored score stays the tailored one.
+// Returns the score breakdown plus `basis`: 'resume' or 'profile'.
+router.post('/:id/score/baseline', async (req, res) => {
+  try {
+    const db = userClient(req.accessToken);
+    const job = await getOwnedJob(db, req.user.id, req.params.id);
+    if (!job) return notFoundJob(res);
+    if (!job.description || !job.description.trim()) {
+      return sendError(res, 400, 'empty_description', 'This job needs a description to score against.');
+    }
+
+    // Prefer the current saved resume (the "previous version"); fall back to the
+    // base profile when nothing has been tailored yet.
+    const resume = await db
+      .from('resumes')
+      .select('content')
+      .eq('job_id', job.id)
+      .maybeSingle();
+    if (resume.error) {
+      console.error('POST score/baseline resume lookup:', resume.error.message);
+      return serverError(res);
+    }
+
+    let basis = 'resume';
+    let content = resume.data && resume.data.content ? resume.data.content.trim() : '';
+    if (!content) {
+      basis = 'profile';
+      content = (await getProfileContent(db, req.user.id)).trim();
+    }
+    if (!content) {
+      return sendError(res, 400, 'no_baseline', 'Upload your resume (base profile) before scoring.');
+    }
+
+    const breakdown = computeScore(job.description, content);
+    return res.status(200).json({ ...breakdown, basis });
+  } catch (err) {
+    console.error('POST /api/jobs/:id/score/baseline:', err.message);
+    return serverError(res);
+  }
+});
+
 // GET /api/jobs/:id/score — latest stored score.
 router.get('/:id/score', async (req, res) => {
   try {

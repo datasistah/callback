@@ -23,9 +23,14 @@ function firstLine(profile) {
   return line || 'Candidate';
 }
 
-// Assemble readable resume text from graded bullets. Grounded bullets are
-// listed as experience; unsupported ones are kept but clearly marked so they
-// are never passed off as verified.
+// Assemble readable resume text: job-targeted highlights (grounded in the vault)
+// placed ABOVE the candidate's full base resume. Tailoring should re-emphasize
+// and lead with the most relevant experience — not throw the rest away. Keeping
+// the full resume beneath the highlights means the tailored version always
+// covers at least the keywords the base did (so its fit score can climb from
+// the emphasis, never drop because content was discarded), and matches how real
+// resume tailoring works. Grounded bullets lead; any unsupported ones are kept
+// but clearly marked so they're never passed off as verified.
 function renderResume({ profile, job, provenance }) {
   const grounded = provenance.filter((p) => p.grounded);
   const flagged = provenance.filter((p) => !p.grounded);
@@ -34,7 +39,7 @@ function renderResume({ profile, job, provenance }) {
     firstLine(profile),
     `Tailored for ${job.title} at ${job.company}`,
     '',
-    'EXPERIENCE (grounded in your Career Vault)',
+    'TAILORED HIGHLIGHTS (grounded in your Career Vault)',
     ...(grounded.length
       ? grounded.map((p) => `- ${p.text}`)
       : ['(no vault-grounded bullets matched this role)']),
@@ -47,6 +52,10 @@ function renderResume({ profile, job, provenance }) {
       ...flagged.map((p) => `- [unverified] ${p.text}`)
     );
   }
+
+  // Preserve the full base resume beneath the tailored highlights so no real
+  // experience or skills (and the job keywords they carry) are lost.
+  out.push('', 'FULL RESUME', profile.trim());
 
   return out.join('\n');
 }
